@@ -1,0 +1,10 @@
+{
+  "name": "unihack-monorepo",
+  "packageManager": "yarn@4.11.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "resolutions": {
+    "negotiator": "0.6.4"
+  }
+}
