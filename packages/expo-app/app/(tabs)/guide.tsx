@@ -7,6 +7,7 @@ import VoiceInputOverlay from '@/components/chat/VoiceInputOverlay';
 import { ChatMessage } from '@/components/chat/types';
 import { sendChat } from '@/utils/chat-api';
 import { useUiBus } from '@/state/ui-bus';
+import * as ImagePicker from 'expo-image-picker';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -29,6 +30,7 @@ function GuideScreen() {
   const [isListening, setIsListening] = useState(false);
   const [liveTranscription, setLiveTranscription] = useState('');
   const [recognizing, setRecognizing] = useState(false);
+  const [attachmentUri, setAttachmentUri] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
 
   // Handle speech recognition events
@@ -150,13 +152,14 @@ function GuideScreen() {
 
   const onSend = async (text?: string) => {
     const content = (text ?? currentInput).trim();
-    if (!content) return;
-    const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content, ts: Date.now() };
+    if (!content && !attachmentUri) return;
+    const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content || undefined, imageUri: attachmentUri, ts: Date.now() };
     setMessages((prev) => [userMsg, ...prev]);
     setCurrentInput('');
+    setAttachmentUri(undefined);
     setIsLoading(true);
     try {
-      const reply = await sendChat(content, messages);
+      const reply = await sendChat(content || '', messages);
       const botMsg: ChatMessage = {
         id: String(Date.now() + 1),
         role: 'bot',
@@ -175,6 +178,28 @@ function GuideScreen() {
     }
   };
 
+  const handleOpenCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission required', 'Please grant camera access to take a photo');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        base64: false,
+        allowsEditing: true,
+        exif: false,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setAttachmentUri(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('Camera error', e);
+      Alert.alert('Error', 'Failed to open camera');
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView 
@@ -189,6 +214,9 @@ function GuideScreen() {
           onSend={() => onSend()} 
           isListening={isListening} 
           onToggleVoice={handleToggleVoice} 
+          onOpenCamera={handleOpenCamera}
+          attachmentUri={attachmentUri}
+          onRemoveAttachment={() => setAttachmentUri(undefined)}
         />
       </KeyboardAvoidingView>
       <VoiceInputOverlay 

@@ -18,6 +18,7 @@ export type ChatMessage = {
   type: 'text' | 'card';
   text?: string;
   card?: ChatCard;
+  imageUri?: string;
   suggestions?: string[];
   ts: number;
 };
