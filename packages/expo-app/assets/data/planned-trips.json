@@ -1,57 +1,131 @@
 {
-    "wantToGo": [
-      {
-        "id": "uuid-1",
-        "name": "Eiffel Tower",
-        "location": { "lat": 48.8584, "lng": 2.2945 },
-        "status": "want-to-go",
-        "scheduledTime": null,
-        "type": "activity"
+  "wantToGo": [
+    {
+      "id": "uuid-1",
+      "name": "Eiffel Tower",
+      "location": { "lat": 48.8584, "lng": 2.2945 },
+      "status": "want-to-go",
+      "scheduledTime": null,
+      "type": "activity"
+    },
+    {
+      "id": "uuid-4",
+      "name": "Shinjuku Gyoen",
+      "location": { "lat": 35.685, "lng": 139.710 },
+      "status": "want-to-go",
+      "scheduledTime": null,
+      "type": "activity"
+    }
+  ],
+    "trips": [{
+      "id": "trip-uuid-1",
+      "details": {
+        "destination": "Paris",
+        "startDate": null,
+        "endDate": null
       },
-      {
-        "id": "uuid-4",
-        "name": "Shinjuku Gyoen",
-        "location": { "lat": 35.685, "lng": 139.710 },
-        "status": "want-to-go",
-        "scheduledTime": null,
-        "type": "activity"
-      }
-    ],
-    "trips": [
-      {
-        "id": "trip-1",
-        "details": {
-          "destination": "Paris",
-          "startDate": "2025-10-20",
-          "endDate": "2025-10-22"
-        },
-        "places": [
-          {
-            "id": "uuid-2",
-            "name": "Louvre Museum",
-            "location": { "lat": 48.8606, "lng": 2.3376 },
-            "status": "scheduled",
-            "scheduledTime": "2025-10-22T10:00:00",
-            "type": "activity"
+      "places": [
+        {
+          "id": "place-uuid-1",
+          "name": "Eiffel Tower",
+          "location": {
+            "lat": 48.8584,
+            "lng": 2.2945
           },
-          {
-            "id": "uuid-3",
-            "name": "Coloseum",
-            "location": { "lat": 48.8606, "lng": 2.3376 },
-            "status": "scheduled",
-            "scheduledTime": "2025-10-22T11:00:00",
-            "type": "activity"
-          }
-        ]
-      },
-      {
-        "id": "trip-2",
-        "details": {
-          "destination": "Tokyo",
-          "startDate": "2025-11-05",
-          "endDate": "2025-11-10"
+          "status": "scheduled",
+          "scheduledTime": "2024-07-28T09:00:00",
+          "type": "activity"
         },
-        "places": []
+        {
+          "id": "place-uuid-2",
+          "name": "Musée d'Orsay",
+          "location": {
+            "lat": 48.86,
+            "lng": 2.3266
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-28T15:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-3",
+          "name": "The Louvre Museum",
+          "location": {
+            "lat": 48.8606,
+            "lng": 2.3376
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-29T09:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-4",
+          "name": "Montmartre",
+          "location": {
+            "lat": 48.8864,
+            "lng": 2.3431
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-29T15:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-5",
+          "name": "Marais District",
+          "location": {
+            "lat": 48.8578,
+            "lng": 2.3593
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-30T10:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-6",
+          "name": "Musée Rodin",
+          "location": {
+            "lat": 48.8562,
+            "lng": 2.318
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-30T15:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-7",
+          "name": "Palace of Versailles",
+          "location": {
+            "lat": 48.8049,
+            "lng": 2.1204
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-07-31T09:00:00",
+          "type": "activity"
+        },
+        {
+          "id": "place-uuid-8",
+          "name": "Canal Saint-Martin",
+          "location": {
+            "lat": 48.8697,
+            "lng": 2.3643
+          },
+          "status": "scheduled",
+          "scheduledTime": "2024-08-01T10:00:00",
+          "type": "activity"
+        }
+      ],
+      "dailyTravelTimes": {
+        "2024-07-28": [
+          25
+        ],
+        "2024-07-29": [
+          25
+        ],
+        "2024-07-30": [
+          30
+        ],
+        "2024-07-31": [],
+        "2024-08-01": []
       }
-    ]
+    }]
   }

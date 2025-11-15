@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Calendar, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react-native';
 import { Trip, Place } from '../../types/planner-types';
 import { formatDateHeader, getDayNumber } from '../../utils/formaters-planner';
 import { PlaceCard } from './PlaceCard';
@@ -45,28 +45,35 @@ export function TripItinerary({
   const [isMinimized, setIsMinimized] = useState(false);
 
   const groupedPlaces = useMemo(() => groupPlaces(trip), [trip]);
-  const datesWithItems = Object.keys(groupedPlaces).sort();
 
-  const allDatesToShow = useMemo(() => {
-    if (datesWithItems.length === 0) {
-      return [];
-    }
+  // --- UPDATED ---
+  // Derive effective dates and all days to show with conditional logic
+  const { effectiveStartDate, effectiveEndDate, allDatesToShow } = useMemo(() => {
+    const { details, dailyTravelTimes } = trip;
 
-    const lastScheduledDateStr = datesWithItems[datesWithItems.length - 1];
+    // Get the sorted list of days from the travel times object
+    const daysFromTravelTimes = Object.keys(dailyTravelTimes).sort();
+
+    // LOGIC: Use details.startDate if it exists, otherwise fall back
+    const startDate = details.startDate || (daysFromTravelTimes.length > 0 ? daysFromTravelTimes[0] : null);
     
-    const startDate = new Date(trip.details.startDate + 'T12:00:00Z');
-    const lastScheduledDate = new Date(lastScheduledDateStr + 'T12:00:00Z');
+    // LOGIC: Use details.endDate if it exists, otherwise fall back
+    const endDate =
+      details.endDate || (daysFromTravelTimes.length > 0 ? daysFromTravelTimes[daysFromTravelTimes.length - 1] : null);
 
-    const dates = [];
-    let currentDate = new Date(startDate);
+    // This logic determines which days to RENDER.
+    // It should be based on the most reliable source of *all* trip days,
+    // which is the 'dailyTravelTimes' object keys.
+    const allDays = daysFromTravelTimes;
 
-    while (currentDate <= lastScheduledDate) {
-      dates.push(currentDate.toISOString().split('T')[0]);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    return dates;
-  }, [trip.details.startDate, groupedPlaces]);
-  
+    return {
+      effectiveStartDate: startDate,
+      effectiveEndDate: endDate,
+      allDatesToShow: allDays,
+    };
+  }, [trip, groupedPlaces]);
+  // --- END UPDATE ---
+
   return (
     <View style={styles.container}>
       <Pressable
@@ -77,10 +84,16 @@ export function TripItinerary({
           <Text style={styles.headerTitle}>
             Your {trip.details.destination} Trip
           </Text>
-          <Text style={styles.headerDate}>
-            {formatDateHeader(trip.details.startDate)} -{' '}
-            {formatDateHeader(trip.details.endDate)}
-          </Text>
+          {/* --- UPDATED --- Use derived dates */}
+          {effectiveStartDate && effectiveEndDate ? (
+            <Text style={styles.headerDate}>
+              {formatDateHeader(effectiveStartDate)} -{' '}
+              {formatDateHeader(effectiveEndDate)}
+            </Text>
+          ) : (
+            <Text style={styles.headerDate}>No dates scheduled</Text>
+          )}
+          {/* --- END UPDATE --- */}
         </View>
         {isMinimized ? (
           <ChevronDown size={24} color="#6B7280" />
@@ -93,16 +106,16 @@ export function TripItinerary({
       {!isMinimized && (
         <View style={styles.content}>
           
-          {/* Check if there are *any* days to show */}
+          {/* --- UPDATED --- Use allDatesToShow array */}
           {allDatesToShow.length === 0 ? (
-            // Condition 1: No items scheduled at all
             <Text style={styles.emptyText}>
               No items scheduled for this trip yet.
             </Text>
           ) : (
-            // Condition 2 & 3: Map over the *full range* of days
+            // Map over the *full range* of days from dailyTravelTimes
             allDatesToShow.map((date) => {
               const placesForDay = groupedPlaces[date] || []; // Get items, or an empty array
+              const travelTimesForDay =(trip.dailyTravelTimes as Record<string, number[]>)[date] || [];
               return (
                 <View style={styles.section} key={date}>
                   <View style={styles.sectionHeader}>
@@ -111,28 +124,53 @@ export function TripItinerary({
                       color="#16A34A"
                       style={styles.sectionIcon}
                     />
+                    {/* --- UPDATED --- Pass derived effectiveStartDate */}
                     <Text style={styles.sectionTitle}>
-                      Day {getDayNumber(trip.details.startDate, date)}:{' '}
+                      Day {getDayNumber(effectiveStartDate!, date)}:{' '}
                       {formatDateHeader(date)}
                     </Text>
                   </View>
                   <View style={styles.cardList}>
                     {placesForDay.length > 0 ? (
-                      placesForDay.map((place) => (
-                        <PlaceCard
-                          key={place.id}
-                          place={place}
-                          onRemove={() => onRemovePlace(place.id)}
-                          onSchedule={() => {}} // Not applicable
-                          onUnschedule={() => onUnschedulePlace(place.id)}
-                          onMarkAsVisited={() =>
-                            onMarkPlaceAsVisited(place.id)
-                          }
-                          onUndoVisit={() => onUndoPlaceVisit(place.id)}
-                        />
-                      ))
+                      placesForDay.map((place, index) => {
+                        // Get travel time from the array
+                        const travelTime =
+                          index < placesForDay.length - 1
+                            ? travelTimesForDay[index] // Get time from our new array
+                            : null;
+
+                        return (
+                          <View key={place.id}>
+                            <PlaceCard
+                              place={place}
+                              onRemove={() => onRemovePlace(place.id)}
+                              onSchedule={() => {}} // Not applicable
+                              onUnschedule={() =>
+                                onUnschedulePlace(place.id)
+                              }
+                              onMarkAsVisited={() =>
+                                onMarkPlaceAsVisited(place.id)
+                              }
+                              onUndoVisit={() => onUndoPlaceVisit(place.id)}
+                            />
+                            {/* Render travel time if it exists */}
+                            {travelTime != null && (
+                              <View style={styles.travelTimeContainer}>
+                                <MoreVertical
+                                  size={16}
+                                  color="#9CA3AF"
+                                  style={styles.travelIcon}
+                                />
+                                <Text style={styles.travelText}>
+                                  ~ {travelTime} min travel
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })
                     ) : (
-                      // This now handles empty days like Day 1 and Day 2
+                      // This now handles empty days
                       <Text style={styles.emptyText}>
                         No plans for this day yet.
                       </Text>
@@ -205,11 +243,24 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   cardList: {
-    gap: 12,
   },
   emptyText: {
     fontSize: 14,
     color: '#9CA3AF',
     fontStyle: 'italic',
+  },
+  travelTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    height: 40, // Fixed height for the connector
+  },
+  travelIcon: {
+    marginRight: 8,
+  },
+  travelText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
   },
 });

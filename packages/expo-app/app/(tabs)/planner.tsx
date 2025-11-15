@@ -64,9 +64,6 @@ export default function PlannerPage() {
     }
   };
 
-  /**
-   * Marks a place as visited.
-   */
   const handleMarkAsVisited = (tripId: string, placeId: string) => {
     setTrips((currentTrips) =>
       currentTrips.map((trip) => {
@@ -109,10 +106,32 @@ export default function PlannerPage() {
     const selectedTrip = trips.find((trip) => trip.id === tripId);
     if (!selectedTrip) return;
 
+    // --- UPDATED LOGIC ---
+    // 1. Try to get the start date from 'details'
+    let effectiveStartDate = selectedTrip.details.startDate;
+
+    // 2. If it's null or empty, fall back to 'dailyTravelTimes'
+    if (!effectiveStartDate) {
+      const tripDays = Object.keys(selectedTrip.dailyTravelTimes).sort();
+      if (tripDays.length > 0) {
+        effectiveStartDate = tripDays[0]; // Get the first day from the sorted list
+      }
+    }
+
+    // 3. If there's still no date, we can't schedule.
+    if (!effectiveStartDate) {
+      alert('This trip has no days and cannot be scheduled.');
+      return;
+    }
+    // --- END UPDATE ---
+
     const scheduledPlace: Place = {
       ...placeToMove,
       status: 'scheduled',
-      scheduledTime: `${selectedTrip.details.startDate}T09:00:00`,
+      // --- UPDATED ---
+      // Use the 'effectiveStartDate' variable
+      scheduledTime: `${effectiveStartDate}T09:00:00`,
+      // --- END UPDATE ---
     };
 
     setTrips((currentTrips) =>
@@ -208,6 +227,7 @@ export default function PlannerPage() {
                 onSchedule={() => handleOpenMoveModal(place)}
                 onUnschedule={() => {}} // Not applicable
                 onMarkAsVisited={() => {}} // Not applicable
+                onUndoVisit={() => {}} // --- NEW ---
               />
             ))
           ) : (
