@@ -4,6 +4,10 @@ import { Calendar, ChevronDown, ChevronUp, MoreVertical } from 'lucide-react-nat
 import { Trip, Place } from '../../types/planner-types';
 import { formatDateHeader, getDayNumber } from '../../utils/formaters-planner';
 import { PlaceCard } from './PlaceCard';
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 function groupPlaces(trip: Trip): { [date: string]: Place[] } {
   const { places } = trip;
@@ -43,6 +47,11 @@ export function TripItinerary({
   onUndoPlaceVisit,
 }: TripItineraryProps) {
   const [isMinimized, setIsMinimized] = useState(false);
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const borderNeutral = colorScheme === 'dark' ? '#38383A' : '#E5E5EA';
+  const surface = palette.background;
+  const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
 
   const groupedPlaces = useMemo(() => groupPlaces(trip), [trip]);
 
@@ -52,7 +61,7 @@ export function TripItinerary({
     const { details, dailyTravelTimes } = trip;
 
     // Get the sorted list of days from the travel times object
-    const daysFromTravelTimes = Object.keys(dailyTravelTimes).sort();
+    const daysFromTravelTimes = Object.keys(dailyTravelTimes ?? {}).sort();
 
     // LOGIC: Use details.startDate if it exists, otherwise fall back
     const startDate = details.startDate || (daysFromTravelTimes.length > 0 ? daysFromTravelTimes[0] : null);
@@ -75,42 +84,42 @@ export function TripItinerary({
   // --- END UPDATE ---
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: palette.background, borderColor: borderNeutral }]}>
       <Pressable
         style={styles.header}
         onPress={() => setIsMinimized(!isMinimized)}
       >
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>
+          <ThemedText style={[styles.headerTitle, { color: palette.text }]}>
             Your {trip.details.destination} Trip
-          </Text>
+          </ThemedText>
           {/* --- UPDATED --- Use derived dates */}
           {effectiveStartDate && effectiveEndDate ? (
-            <Text style={styles.headerDate}>
+            <ThemedText style={[styles.headerDate, { color: textSecondary }]}>
               {formatDateHeader(effectiveStartDate)} -{' '}
               {formatDateHeader(effectiveEndDate)}
-            </Text>
+            </ThemedText>
           ) : (
-            <Text style={styles.headerDate}>No dates scheduled</Text>
+            <ThemedText style={[styles.headerDate, { color: textSecondary }]}>No dates scheduled</ThemedText>
           )}
           {/* --- END UPDATE --- */}
         </View>
         {isMinimized ? (
-          <ChevronDown size={24} color="#6B7280" />
+          <ChevronDown size={24} color={textSecondary} />
         ) : (
-          <ChevronUp size={24} color="#6B7280" />
+          <ChevronUp size={24} color={textSecondary} />
         )}
       </Pressable>
 
       {/* --- Collapsible Content --- */}
       {!isMinimized && (
-        <View style={styles.content}>
+        <View style={[styles.content, { backgroundColor: surface, borderColor: borderNeutral }] }>
           
           {/* --- UPDATED --- Use allDatesToShow array */}
           {allDatesToShow.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <ThemedText style={[styles.emptyText, { color: textSecondary }]}> 
               No items scheduled for this trip yet.
-            </Text>
+            </ThemedText>
           ) : (
             // Map over the *full range* of days from dailyTravelTimes
             allDatesToShow.map((date) => {
@@ -125,10 +134,10 @@ export function TripItinerary({
                       style={styles.sectionIcon}
                     />
                     {/* --- UPDATED --- Pass derived effectiveStartDate */}
-                    <Text style={styles.sectionTitle}>
+                    <ThemedText style={[styles.sectionTitle, { color: palette.text }] }>
                       Day {getDayNumber(effectiveStartDate!, date)}:{' '}
                       {formatDateHeader(date)}
-                    </Text>
+                    </ThemedText>
                   </View>
                   <View style={styles.cardList}>
                     {placesForDay.length > 0 ? (
@@ -158,12 +167,12 @@ export function TripItinerary({
                               <View style={styles.travelTimeContainer}>
                                 <MoreVertical
                                   size={16}
-                                  color="#9CA3AF"
+                                  color={textSecondary}
                                   style={styles.travelIcon}
                                 />
-                                <Text style={styles.travelText}>
+                                <ThemedText style={[styles.travelText, { color: textSecondary }]}>
                                   ~ {travelTime} min travel
-                                </Text>
+                                </ThemedText>
                               </View>
                             )}
                           </View>
@@ -171,9 +180,9 @@ export function TripItinerary({
                       })
                     ) : (
                       // This now handles empty days
-                      <Text style={styles.emptyText}>
+                      <ThemedText style={[styles.emptyText, { color: textSecondary }] }>
                         No plans for this day yet.
-                      </Text>
+                      </ThemedText>
                     )}
                   </View>
                 </View>
@@ -182,7 +191,7 @@ export function TripItinerary({
           )}
         </View>
       )}
-    </View>
+    </ThemedView>
   );
 }
 
