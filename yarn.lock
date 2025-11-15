@@ -5204,6 +5204,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-location@npm:~19.0.7":
+  version: 19.0.7
+  resolution: "expo-location@npm:19.0.7"
+  peerDependencies:
+    expo: "*"
+  checksum: 10c0/15e1bf3241c4e98d39a62047947a1aeccd6885ec0dfc9b3aec21a3bbae3e1781ac74c2e892d20bab1ee433768e628a0d9f9392b944cd6881bc75b86a8fe56ea4
+  languageName: node
+  linkType: hard
+
 "expo-modules-autolinking@npm:3.0.21":
   version: 3.0.21
   resolution: "expo-modules-autolinking@npm:3.0.21"
@@ -10123,6 +10132,7 @@ __metadata:
   resolution: "unihack-monorepo@workspace:."
   dependencies:
     "@react-native-community/datetimepicker": "npm:8.4.4"
+    expo-location: "npm:~19.0.7"
     lucide-react-native: "npm:^0.553.0"
     react-native-maps: "npm:1.20.1"
     react-native-modal-datetime-picker: "npm:^18.0.0"

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "8.4.4",
+    "expo-location": "~19.0.7",
     "lucide-react-native": "^0.553.0",
     "react-native-maps": "1.20.1",
     "react-native-modal-datetime-picker": "^18.0.0",

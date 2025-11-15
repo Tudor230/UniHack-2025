@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { 
   StyleSheet, 
@@ -8,9 +8,10 @@ import {
   TouchableOpacity, 
   Text,
   KeyboardAvoidingView,
+  ActivityIndicator,
   Platform
 } from 'react-native';
-import MapView, { LongPressEvent, LatLng } from 'react-native-maps';
+import MapView, { LongPressEvent, LatLng, Region } from 'react-native-maps';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { ThemedView } from '@/components/themed-view';
 import { PinMarkers } from '@/components/map/PinMarkers';
@@ -18,6 +19,7 @@ import { usePins } from '@/state/pins';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import * as Location from 'expo-location';
  
 
 export default function MapScreen() {
@@ -33,6 +35,37 @@ export default function MapScreen() {
   const [pinName, setPinName] = useState('');
   const [pinDate, setPinDate] = useState<Date | null>(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+
+  const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      // Ask for permission
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        // Fallback to a default location (Cupertino) if permission denied
+        setInitialRegion({
+          latitude: 37.33182,
+          longitude: -122.03118,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        });
+        return;
+      }
+
+      // Get user's current location
+      let location = await Location.getCurrentPositionAsync({});
+      const region = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01, // Zoom in a bit closer
+        longitudeDelta: 0.01, // Zoom in a bit closer
+      };
+      setInitialRegion(region);
+    })();
+  }, []);
 
   const handleMapLongPress = (event: LongPressEvent) => {
     const { coordinate } = event.nativeEvent;
@@ -78,18 +111,24 @@ export default function MapScreen() {
     hideDatePicker();
   };
 
+  if (!initialRegion) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <ThemedText>{errorMsg || 'Finding your location...'}</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <MapView
         style={styles.map}
         onLongPress={handleMapLongPress}
         onPress={handleCloseModal}
-        initialRegion={{
-          latitude: 37.33182,
-          longitude: -122.03118,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        }}
+        initialRegion={initialRegion} // Use the location from state
+        showsUserLocation={true} // Shows the blue "you are here" dot
+        followsUserLocation={true}
       >
         <PinMarkers
           key={state.wantToGo.length + state.history.length + state.bookable.length}
@@ -165,6 +204,12 @@ const styles = StyleSheet.create({
   },
   map: {
     ...StyleSheet.absoluteFillObject,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
   },
   modalOverlay: {
     flex: 1,
