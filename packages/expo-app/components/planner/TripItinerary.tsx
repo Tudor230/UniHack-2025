@@ -1,25 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Calendar, ChevronDown, ChevronUp, MapPin } from 'lucide-react-native';
+import { Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { Trip, Place } from '../../types/planner-types';
 import { formatDateHeader, getDayNumber } from '../../utils/formaters-planner';
 import { PlaceCard } from './PlaceCard';
 
-// --- LOGIC from useGroupedPlaces hook ---
-interface GroupedPlaces {
-  unscheduled: Place[];
-  [date: string]: Place[];
-}
+function groupPlaces(trip: Trip): { [date: string]: Place[] } {
+  const { places } = trip;
+  const grouped: { [date: string]: Place[] } = {};
 
-function groupPlaces(trip: Trip): GroupedPlaces {
-  const { places, details } = trip;
-  const grouped: GroupedPlaces = {
-    unscheduled: [],
-  };
-
-  places.forEach((place : any) => {
-    if (place.scheduledTime && place.status === 'scheduled') {
-      const date = place.scheduledTime.split('T')[0];
+  places.forEach((place) => {
+    if (place.status === 'scheduled' || place.status === 'visited') {
+      const date = place.scheduledTime!.split('T')[0];
       if (!grouped[date]) {
         grouped[date] = [];
       }
@@ -29,43 +21,54 @@ function groupPlaces(trip: Trip): GroupedPlaces {
           new Date(a.scheduledTime!).getTime() -
           new Date(b.scheduledTime!).getTime()
       );
-    } else {
-      grouped.unscheduled.push(place);
     }
   });
 
-  if (!grouped[details.startDate]) grouped[details.startDate] = [];
-  if (trip.id === 'trip-1' && !grouped['2025-10-21']) grouped['2025-10-21'] = [];
-  if (trip.id === 'trip-1' && !grouped['2025-10-22']) grouped['2025-10-22'] = [];
-
   return grouped;
 }
-// --- END LOGIC ---
 
 interface TripItineraryProps {
   trip: Trip;
-  // It receives functions from PlannerPage
   onRemovePlace: (placeId: string) => void;
-  onUpdatePlace: (placeId: string, updates: Partial<Place>) => void;
+  onUnschedulePlace: (placeId: string) => void;
+  onMarkPlaceAsVisited: (placeId: string) => void;
+  onUndoPlaceVisit: (placeId: string) => void;
 }
 
 export function TripItinerary({
   trip,
   onRemovePlace,
-  onUpdatePlace,
+  onUnschedulePlace,
+  onMarkPlaceAsVisited,
+  onUndoPlaceVisit,
 }: TripItineraryProps) {
   const [isMinimized, setIsMinimized] = useState(false);
-  
-  // We use useMemo to run the grouping logic only when the trip changes
+
   const groupedPlaces = useMemo(() => groupPlaces(trip), [trip]);
+  const datesWithItems = Object.keys(groupedPlaces).sort();
 
-  const scheduledDates = Object.keys(groupedPlaces)
-    .filter((key) => key !== 'unscheduled')
-    .sort();
+  const allDatesToShow = useMemo(() => {
+    if (datesWithItems.length === 0) {
+      return [];
+    }
 
+    const lastScheduledDateStr = datesWithItems[datesWithItems.length - 1];
+    
+    const startDate = new Date(trip.details.startDate + 'T12:00:00Z');
+    const lastScheduledDate = new Date(lastScheduledDateStr + 'T12:00:00Z');
+
+    const dates = [];
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= lastScheduledDate) {
+      dates.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates;
+  }, [trip.details.startDate, groupedPlaces]);
+  
   return (
     <View style={styles.container}>
-      {/* --- Header --- */}
       <Pressable
         style={styles.header}
         onPress={() => setIsMinimized(!isMinimized)}
@@ -89,98 +92,63 @@ export function TripItinerary({
       {/* --- Collapsible Content --- */}
       {!isMinimized && (
         <View style={styles.content}>
-          {/* --- Unscheduled Items --- */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MapPin size={20} color="#3B82F6" style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>Want to Go</Text>
-            </View>
-            <View style={styles.cardList}>
-              {groupedPlaces.unscheduled.length > 0 ? (
-                groupedPlaces.unscheduled.map((place) => (
-                  <PlaceCard
-                    key={place.id}
-                    place={place}
-                    // Pass the functions down to the card
-                    onRemove={() => onRemovePlace(place.id)}
-                    onSchedule={() =>
-                      onUpdatePlace(place.id, {
-                        // Simplified schedule logic for demo
-                        scheduledTime:
-                          trip.id === 'trip-1'
-                            ? '2025-10-21T14:00:00Z'
-                            : '2025-11-07T11:00:00Z',
-                        status: 'scheduled',
-                      })
-                    }
-                    onUnschedule={() =>
-                      onUpdatePlace(place.id, {
-                        scheduledTime: null,
-                        status: 'want-to-go',
-                      })
-                    }
-                  />
-                ))
-              ) : (
-                <Text style={styles.emptyText}>No unscheduled places.</Text>
-              )}
-            </View>
-          </View>
-
-          {/* --- Scheduled Items --- */}
-          {scheduledDates.map((date) => (
-            <View style={styles.section} key={date}>
-              <View style={styles.sectionHeader}>
-                <Calendar
-                  size={20}
-                  color="#16A34A"
-                  style={styles.sectionIcon}
-                />
-                <Text style={styles.sectionTitle}>
-                  Day {getDayNumber(trip.details.startDate, date)}:{' '}
-                  {formatDateHeader(date)}
-                </Text>
-              </View>
-              <View style={styles.cardList}>
-                {groupedPlaces[date].length > 0 ? (
-                  groupedPlaces[date].map((place) => (
-                    <PlaceCard
-                      key={place.id}
-                      place={place}
-                      // Pass the functions down to the card
-                      onRemove={() => onRemovePlace(place.id)}
-                      onSchedule={() =>
-                        onUpdatePlace(place.id, {
-                          scheduledTime:
-                            trip.id === 'trip-1'
-                              ? '2025-10-21T14:00:00Z'
-                              : '2025-11-07T11:00:00Z',
-                          status: 'scheduled',
-                        })
-                      }
-                      onUnschedule={() =>
-                        onUpdatePlace(place.id, {
-                          scheduledTime: null,
-                          status: 'want-to-go',
-                        })
-                      }
+          
+          {/* Check if there are *any* days to show */}
+          {allDatesToShow.length === 0 ? (
+            // Condition 1: No items scheduled at all
+            <Text style={styles.emptyText}>
+              No items scheduled for this trip yet.
+            </Text>
+          ) : (
+            // Condition 2 & 3: Map over the *full range* of days
+            allDatesToShow.map((date) => {
+              const placesForDay = groupedPlaces[date] || []; // Get items, or an empty array
+              return (
+                <View style={styles.section} key={date}>
+                  <View style={styles.sectionHeader}>
+                    <Calendar
+                      size={20}
+                      color="#16A34A"
+                      style={styles.sectionIcon}
                     />
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>
-                    No plans for this day yet.
-                  </Text>
-                )}
-              </View>
-            </View>
-          ))}
+                    <Text style={styles.sectionTitle}>
+                      Day {getDayNumber(trip.details.startDate, date)}:{' '}
+                      {formatDateHeader(date)}
+                    </Text>
+                  </View>
+                  <View style={styles.cardList}>
+                    {placesForDay.length > 0 ? (
+                      placesForDay.map((place) => (
+                        <PlaceCard
+                          key={place.id}
+                          place={place}
+                          onRemove={() => onRemovePlace(place.id)}
+                          onSchedule={() => {}} // Not applicable
+                          onUnschedule={() => onUnschedulePlace(place.id)}
+                          onMarkAsVisited={() =>
+                            onMarkPlaceAsVisited(place.id)
+                          }
+                          onUndoVisit={() => onUndoPlaceVisit(place.id)}
+                        />
+                      ))
+                    ) : (
+                      // This now handles empty days like Day 1 and Day 2
+                      <Text style={styles.emptyText}>
+                        No plans for this day yet.
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
       )}
     </View>
   );
 }
 
-// Styles remain the same
+// Styles
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',

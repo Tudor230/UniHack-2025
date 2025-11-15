@@ -1,0 +1,57 @@
+{
+    "wantToGo": [
+      {
+        "id": "uuid-1",
+        "name": "Eiffel Tower",
+        "location": { "lat": 48.8584, "lng": 2.2945 },
+        "status": "want-to-go",
+        "scheduledTime": null,
+        "type": "activity"
+      },
+      {
+        "id": "uuid-4",
+        "name": "Shinjuku Gyoen",
+        "location": { "lat": 35.685, "lng": 139.710 },
+        "status": "want-to-go",
+        "scheduledTime": null,
+        "type": "activity"
+      }
+    ],
+    "trips": [
+      {
+        "id": "trip-1",
+        "details": {
+          "destination": "Paris",
+          "startDate": "2025-10-20",
+          "endDate": "2025-10-22"
+        },
+        "places": [
+          {
+            "id": "uuid-2",
+            "name": "Louvre Museum",
+            "location": { "lat": 48.8606, "lng": 2.3376 },
+            "status": "scheduled",
+            "scheduledTime": "2025-10-22T10:00:00",
+            "type": "activity"
+          },
+          {
+            "id": "uuid-3",
+            "name": "Coloseum",
+            "location": { "lat": 48.8606, "lng": 2.3376 },
+            "status": "scheduled",
+            "scheduledTime": "2025-10-22T11:00:00",
+            "type": "activity"
+          }
+        ]
+      },
+      {
+        "id": "trip-2",
+        "details": {
+          "destination": "Tokyo",
+          "startDate": "2025-11-05",
+          "endDate": "2025-11-10"
+        },
+        "places": []
+      }
+    ]
+  }

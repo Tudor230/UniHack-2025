@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Clock, MapPin, X } from 'lucide-react-native';
+import { Clock, MapPin, X, RotateCcw } from 'lucide-react-native';
 import { Place } from '../../types/planner-types';
 import { formatTime } from '../../utils/formaters-planner';
 
 interface PlaceCardProps {
   place: Place;
-  // It just receives simple functions as props
   onRemove: () => void;
   onSchedule: () => void;
   onUnschedule: () => void;
+  onMarkAsVisited: () => void;
+  onUndoVisit: () => void;
 }
 
 export function PlaceCard({
@@ -17,19 +18,34 @@ export function PlaceCard({
   onRemove,
   onSchedule,
   onUnschedule,
+  onMarkAsVisited,
+  onUndoVisit,
 }: PlaceCardProps) {
-  const isScheduled = place.status === 'scheduled' && place.scheduledTime;
+  const isScheduled = place.status === 'scheduled';
+  const isVisited = place.status === 'visited';
 
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View style={styles.info}>
-          <Text style={styles.name}>{place.name}</Text>
-          {isScheduled ? (
+          <Text style={[styles.name, isVisited && styles.nameVisited]}>
+            {place.name}
+          </Text>
+
+          {isScheduled || isVisited ? (
             <View style={styles.statusRow}>
-              <Clock size={16} color="#166534" style={styles.statusIcon} />
-              <Text style={styles.statusScheduled}>
-                {formatTime(place.scheduledTime)}
+              <Clock
+                size={16}
+                color={isVisited ? '#9CA3AF' : '#166534'}
+                style={styles.statusIcon}
+              />
+              <Text
+                style={[
+                  styles.statusScheduled,
+                  isVisited && styles.statusVisited,
+                ]}
+              >
+                {formatTime(place.scheduledTime)} {isVisited && '(Visited)'}
               </Text>
             </View>
           ) : (
@@ -39,32 +55,62 @@ export function PlaceCard({
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
-          <X size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.bottomRow}>
-        {!isScheduled ? (
-          <TouchableOpacity
-            style={[styles.button, styles.scheduleButton]}
-            onPress={onSchedule} // Use the prop directly
-          >
-            <Text style={styles.scheduleButtonText}>Schedule</Text>
+
+        {isVisited && (
+          <TouchableOpacity onPress={onUndoVisit} style={styles.undoButton}>
+            <RotateCcw size={20} color="#9CA3AF" />
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.button, styles.unscheduleButton]}
-            onPress={onUnschedule} // Use the prop directly
-          >
-            <Text style={styles.unscheduleButtonText}>Unschedule</Text>
+        )}
+
+        {!isScheduled && !isVisited && (
+          <TouchableOpacity onPress={onRemove} style={styles.removeButton}>
+            <X size={20} color="#9CA3AF" />
           </TouchableOpacity>
         )}
       </View>
+
+      {!isVisited && (
+        <View style={styles.bottomRow}>
+          {!isScheduled ? (
+            // Case 1: "Want to Go"
+            <TouchableOpacity
+              style={[styles.button, styles.scheduleButton]}
+              onPress={onSchedule}
+            >
+              <Text style={styles.scheduleButtonText}>Schedule</Text>
+            </TouchableOpacity>
+          ) : (
+            // Case 2: "Scheduled" (but not visited)
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.unscheduleButton,
+                  { flex: 1, marginRight: 4 },
+                ]}
+                onPress={onUnschedule}
+              >
+                <Text style={styles.unscheduleButtonText}>Unschedule</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.markVisitedButton,
+                  { flex: 1, marginLeft: 4 },
+                ]}
+                onPress={onMarkAsVisited}
+              >
+                <Text style={styles.markVisitedButtonText}>Mark as Visited</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
-// Styles remain the same
+// Styles
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
@@ -91,6 +137,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F2937',
   },
+  nameVisited: {
+    textDecorationLine: 'line-through',
+    color: '#9CA3AF',
+  },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -102,6 +152,10 @@ const styles = StyleSheet.create({
   statusScheduled: {
     fontSize: 14,
     color: '#166534',
+  },
+  statusVisited: {
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
   statusUnscheduled: {
     fontSize: 14,
@@ -140,4 +194,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  markVisitedButton: {
+    backgroundColor: '#16A34A', // Green color
+  },
+  markVisitedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  undoButton: {
+    padding: 4,
+  },
+  
 });
