@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import ChatWindow from '@/components/chat/ChatWindow';
 import InputBar from '@/components/chat/InputBar';
@@ -8,6 +8,11 @@ import { ChatMessage } from '@/components/chat/types';
 import { sendChat } from '@/utils/chat-api';
 import { useUiBus } from '@/state/ui-bus';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -31,7 +36,62 @@ function GuideScreen() {
   const [liveTranscription, setLiveTranscription] = useState('');
   const [recognizing, setRecognizing] = useState(false);
   const [attachmentUri, setAttachmentUri] = useState<string | undefined>();
+  const [lightboxUri, setLightboxUri] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
+  const screen = Dimensions.get('window');
+  const MIN_SCALE = 0.9;
+  const MAX_SCALE = 4;
+  const baseScale = useSharedValue(1);
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const offsetX = useSharedValue(0);
+  const offsetY = useSharedValue(0);
+  const clamp = (v: number, min: number, max: number) => {
+    'worklet';
+    return Math.max(min, Math.min(max, v));
+  };
+  const pinch = Gesture.Pinch()
+    .onBegin(() => {
+      scale.value = baseScale.value;
+    })
+    .onUpdate((e) => {
+      const next = clamp(baseScale.value * e.scale, MIN_SCALE, MAX_SCALE);
+      scale.value = next;
+    })
+    .onEnd((e) => {
+      baseScale.value = clamp(baseScale.value * e.scale, MIN_SCALE, MAX_SCALE);
+      scale.value = baseScale.value;
+    });
+  const pan = Gesture.Pan()
+    .onBegin(() => {
+      offsetX.value = translateX.value;
+      offsetY.value = translateY.value;
+    })
+    .onUpdate((e) => {
+      translateX.value = offsetX.value + e.translationX;
+      translateY.value = offsetY.value + e.translationY;
+    })
+    .onEnd(() => {
+      offsetX.value = translateX.value;
+      offsetY.value = translateY.value;
+    });
+  const composed = Gesture.Simultaneous(pinch, pan);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+  const resetTransforms = () => {
+    baseScale.value = withTiming(1);
+    scale.value = withTiming(1);
+    translateX.value = withTiming(0);
+    translateY.value = withTiming(0);
+    offsetX.value = 0;
+    offsetY.value = 0;
+  };
 
   // Handle speech recognition events
   if (speechRecognitionAvailable && useSpeechRecognitionEvent) {
@@ -207,7 +267,7 @@ function GuideScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ChatWindow messages={messages} isLoading={isLoading} onChipPress={(s) => onSend(s)} />
+        <ChatWindow messages={messages} isLoading={isLoading} onChipPress={(s) => onSend(s)} onImageOpen={(uri) => { setLightboxUri(uri); resetTransforms(); }} />
         <InputBar 
           value={currentInput} 
           onChangeText={setCurrentInput} 
@@ -224,6 +284,29 @@ function GuideScreen() {
         transcription={liveTranscription} 
         onStop={handleToggleVoice} 
       />
+      {lightboxUri ? (
+        <GestureHandlerRootView style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 2000 }}>
+          <BlurView style={{ ...StyleSheet.absoluteFillObject }} intensity={100} tint="dark" />
+          <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000000CC' }} />
+          <Pressable style={{ ...StyleSheet.absoluteFillObject, zIndex: 1 }} onPress={() => setLightboxUri(undefined)} />
+          <View style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+            <Pressable onPress={() => setLightboxUri(undefined)} style={{ backgroundColor: '#00000088', borderRadius: 20, padding: 8, marginTop: 25 }}>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <GestureDetector gesture={composed}>
+              <Animated.View style={[animatedStyle, { zIndex: 2 }]}> 
+                <Image
+                  source={{ uri: lightboxUri }}
+                  style={{ width: screen.width * 0.9, height: screen.height * 0.6, borderRadius: 16 }}
+                  contentFit="contain"
+                />
+              </Animated.View>
+            </GestureDetector>
+          </View>
+        </GestureHandlerRootView>
+      ) : null}
     </ThemedView>
   );
 }
