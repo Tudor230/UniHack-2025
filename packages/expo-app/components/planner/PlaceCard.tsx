@@ -3,6 +3,10 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Clock, MapPin, X, RotateCcw } from 'lucide-react-native';
 import { Place } from '../../types/planner-types';
 import { formatTime } from '../../utils/formaters-planner';
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 interface PlaceCardProps {
   place: Place;
@@ -23,14 +27,19 @@ export function PlaceCard({
 }: PlaceCardProps) {
   const isScheduled = place.status === 'scheduled';
   const isVisited = place.status === 'visited';
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const borderNeutral = colorScheme === 'dark' ? '#38383A' : '#E5E5EA';
+  const surfaceCard = palette.background;
+  const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: surfaceCard, borderColor: borderNeutral }]}>
       <View style={styles.topRow}>
         <View style={styles.info}>
-          <Text style={[styles.name, isVisited && styles.nameVisited]}>
+          <ThemedText style={[styles.name, { color: palette.text }, isVisited && styles.nameVisited]}>
             {place.name}
-          </Text>
+          </ThemedText>
 
           {isScheduled || isVisited ? (
             <View style={styles.statusRow}>
@@ -39,19 +48,20 @@ export function PlaceCard({
                 color={isVisited ? '#9CA3AF' : '#166534'}
                 style={styles.statusIcon}
               />
-              <Text
+              <ThemedText
                 style={[
                   styles.statusScheduled,
+                  { color: isVisited ? textSecondary : '#166534' },
                   isVisited && styles.statusVisited,
                 ]}
               >
                 {formatTime(place.scheduledTime)} {isVisited && '(Visited)'}
-              </Text>
+              </ThemedText>
             </View>
           ) : (
             <View style={styles.statusRow}>
               <MapPin size={16} color="#2563EB" style={styles.statusIcon} />
-              <Text style={styles.statusUnscheduled}>Unscheduled</Text>
+              <ThemedText style={[styles.statusUnscheduled, { color: '#2563EB' } ]}>Unscheduled</ThemedText>
             </View>
           )}
         </View>
@@ -70,14 +80,14 @@ export function PlaceCard({
       </View>
 
       {!isVisited && (
-        <View style={styles.bottomRow}>
+        <View style={[styles.bottomRow, { borderColor: borderNeutral }] }>
           {!isScheduled ? (
             // Case 1: "Want to Go"
             <TouchableOpacity
               style={[styles.button, styles.scheduleButton]}
               onPress={onSchedule}
             >
-              <Text style={styles.scheduleButtonText}>Schedule</Text>
+              <ThemedText style={styles.scheduleButtonText}>Schedule</ThemedText>
             </TouchableOpacity>
           ) : (
             // Case 2: "Scheduled" (but not visited)
@@ -86,11 +96,11 @@ export function PlaceCard({
                 style={[
                   styles.button,
                   styles.unscheduleButton,
-                  { flex: 1, marginRight: 4 },
+                  { flex: 1, marginRight: 4, backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#E5E7EB' },
                 ]}
                 onPress={onUnschedule}
               >
-                <Text style={styles.unscheduleButtonText}>Unschedule</Text>
+                <ThemedText style={[styles.unscheduleButtonText, { color: palette.text } ]}>Unschedule</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -100,13 +110,13 @@ export function PlaceCard({
                 ]}
                 onPress={onMarkAsVisited}
               >
-                <Text style={styles.markVisitedButtonText}>Mark as Visited</Text>
+                <ThemedText style={styles.markVisitedButtonText}>Mark as Visited</ThemedText>
               </TouchableOpacity>
             </>
           )}
         </View>
       )}
-    </View>
+    </ThemedView>
   );
 }
 
@@ -195,7 +205,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   markVisitedButton: {
-    backgroundColor: '#16A34A', // Green color
+    backgroundColor: '#16A34A',
   },
   markVisitedButtonText: {
     color: '#FFFFFF',

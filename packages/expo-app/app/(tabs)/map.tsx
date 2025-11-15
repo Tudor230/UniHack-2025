@@ -15,11 +15,18 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { ThemedView } from '@/components/themed-view';
 import { PinMarkers } from '@/components/map/PinMarkers';
 import { usePins } from '@/state/pins';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
  
 
 export default function MapScreen() {
   const { state, addPin} = usePins();
-  const accentColor = '#007AFF';
+  const accentColor = "#2563EB";
+  const colorScheme = useColorScheme() ?? 'light';
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
+  const borderColor = Colors[colorScheme].icon;
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newPinCoords, setNewPinCoords] = useState<LatLng | null>(null);
@@ -108,21 +115,25 @@ export default function MapScreen() {
           />
           
           <View onStartShouldSetResponder={() => true}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Add New Pin</Text>
+            <View style={[styles.modalContent, { backgroundColor, shadowColor: '#000' }] }>
+              <ThemedText type="subtitle" style={styles.modalTitle}>Add New Pin</ThemedText>
               
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor, color: textColor }]}
                 placeholder="Pin Name (e.g., 'Coffee Shop')"
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors[colorScheme].icon}
                 value={pinName}
                 onChangeText={setPinName}
               />
               
-              <TouchableOpacity style={styles.dateButton} onPress={showDatePicker}>
-                <Text style={styles.dateButtonText}>
+              <TouchableOpacity style={[styles.dateButton, { backgroundColor: accentColor }]} onPress={showDatePicker}>
+                <ThemedText
+                  style={styles.dateButtonText}
+                  lightColor={Colors.dark.text}
+                  darkColor={Colors.dark.text}
+                >
                   {pinDate ? pinDate.toLocaleString() : 'Select Date & Time'}
-                </Text>
+                </ThemedText>
               </TouchableOpacity>
               
               <DateTimePickerModal
@@ -160,7 +171,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white',
     padding: 22,
     paddingBottom: 40,
     borderTopLeftRadius: 17,
@@ -179,7 +189,6 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 44,
-    borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
@@ -189,14 +198,12 @@ const styles = StyleSheet.create({
   },
   dateButton: {
     height: 44,
-    backgroundColor: '#007AFF',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   dateButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },

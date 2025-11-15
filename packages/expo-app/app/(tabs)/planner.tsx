@@ -13,8 +13,18 @@ import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
 import { MapPin } from 'lucide-react-native';
 import mockdata from '../../assets/data/planned-trips.json'
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 export default function PlannerPage() {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const borderNeutral = colorScheme === 'dark' ? '#38383A' : '#E5E5EA';
+  const surface = palette.background;
+  const surfaceCard = palette.background;
+  const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
   const normalizedWantToGo: Place[] = (mockdata.wantToGo as Place[]).map((p : Place) => ({
     ...p,
     status: p.status as PlaceStatus,
@@ -174,7 +184,7 @@ export default function PlannerPage() {
   // --- END LOGIC ---
 
   return (
-    <View style={styles.pageContainer}>
+    <ThemedView style={[styles.pageContainer, { backgroundColor: palette.background }]}>
       {/* --- Modal (Unchanged) --- */}
       <Modal
         animationType="fade"
@@ -186,48 +196,48 @@ export default function PlannerPage() {
           style={styles.modalBackdrop}
           onPress={() => setIsModalVisible(false)}
         >
-          <Pressable style={styles.modalContainer} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Add to a Trip</Text>
-            <Text style={styles.modalSubtitle}>
+          <Pressable style={[styles.modalContainer, { backgroundColor: surfaceCard, borderColor: borderNeutral }]} onPress={() => {}}>
+            <ThemedText type="subtitle" style={[styles.modalTitle, { color: palette.text } ]}>Add to a Trip</ThemedText>
+            <ThemedText style={[styles.modalSubtitle, { color: textSecondary }]}>
               Which trip do you want to add "{placeToMove?.name}" to?
-            </Text>
+            </ThemedText>
             <View style={styles.tripListContainer}>
               {trips.map((trip) => (
                 <TouchableOpacity
                   key={trip.id}
-                  style={styles.tripSelectItem}
+                  style={[styles.tripSelectItem, { backgroundColor: surface, borderColor: borderNeutral }]}
                   onPress={() => handleMovePlaceToTrip(trip.id)}
                 >
-                  <Text style={styles.tripSelectItemText}>
+                  <ThemedText style={[styles.tripSelectItemText, { color: palette.text }]}>
                     {trip.details.destination}
-                  </Text>
+                  </ThemedText>
                 </TouchableOpacity>
               ))}
             </View>
             <TouchableOpacity
-              style={styles.modalButtonCancel}
+              style={[styles.modalButtonCancel, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#E5E5EA' }]}
               onPress={() => setIsModalVisible(false)}
             >
-              <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              <ThemedText style={[styles.modalButtonCancelText, { color: palette.text }]}>Cancel</ThemedText>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
       {/* --- END MODAL --- */}
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Your Trips</Text>
-      </View>
+      <ThemedView style={[styles.header, { borderColor: borderNeutral, backgroundColor: surfaceCard }]}>
+        <ThemedText type="title" style={[styles.headerTitle, { color: palette.text }]}>Your Trips</ThemedText>
+      </ThemedView>
 
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
       >
         {/* --- Global "Want to Go" Section --- */}
-        <View style={styles.globalWantToGoSection}>
+        <ThemedView style={[styles.globalWantToGoSection, { borderColor: borderNeutral, backgroundColor: surfaceCard }] }>
           <View style={styles.sectionHeader}>
-            <MapPin size={20} color="#3B82F6" style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>Want to Go</Text>
+            <MapPin size={20} color={palette.tint} style={styles.sectionIcon} />
+            <ThemedText style={[styles.sectionTitle, { color: palette.text }]}>Want to Go</ThemedText>
           </View>
           {wantToGoPlaces.length > 0 ? (
             wantToGoPlaces.map((place) => (
@@ -242,11 +252,11 @@ export default function PlannerPage() {
               />
             ))
           ) : (
-            <Text style={styles.emptyTripsText}>
+            <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
               Your "Want to Go" list is empty.
-            </Text>
+            </ThemedText>
           )}
-        </View>
+        </ThemedView>
 
         {/* --- Trips Section --- */}
         {trips.length > 0 ? (
@@ -267,12 +277,12 @@ export default function PlannerPage() {
             />
           ))
         ) : (
-          <Text style={styles.emptyTripsText}>
+          <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
             You have no trips planned.
-          </Text>
+          </ThemedText>
         )}
       </ScrollView>
-    </View>
+    </ThemedView>
   );
 }
 
