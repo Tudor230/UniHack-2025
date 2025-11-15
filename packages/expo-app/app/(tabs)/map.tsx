@@ -5,28 +5,29 @@ import {
   Modal, 
   View, 
   TextInput, 
-  Button, 
   TouchableOpacity, 
   Text,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
-import MapView, { MapEvent, Coordinate } from 'react-native-maps';
+import MapView, { LongPressEvent, LatLng } from 'react-native-maps';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { ThemedView } from '@/components/themed-view';
 import { PinMarkers } from '@/components/map/PinMarkers';
 import { usePins } from '@/state/pins';
+ 
 
 export default function MapScreen() {
   const { state, addPin} = usePins();
+  const accentColor = '#007AFF';
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [newPinCoords, setNewPinCoords] = useState<Coordinate | null>(null);
+  const [newPinCoords, setNewPinCoords] = useState<LatLng | null>(null);
   const [pinName, setPinName] = useState('');
   const [pinDate, setPinDate] = useState<Date | null>(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
 
-  const handleMapLongPress = (event: MapEvent) => {
+  const handleMapLongPress = (event: LongPressEvent) => {
     const { coordinate } = event.nativeEvent;
     setNewPinCoords(coordinate);
     setModalVisible(true);
@@ -132,8 +133,12 @@ export default function MapScreen() {
               />
 
               <View style={styles.buttonRow}>
-                <Button title="Cancel" onPress={handleCloseModal} color="red" />
-                <Button title="Save Pin" onPress={handleSavePin} />
+                <TouchableOpacity onPress={handleCloseModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ color: '#FF3B30', fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSavePin} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ color: accentColor, fontSize: 16, fontWeight: '600' }}>Save Pin</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

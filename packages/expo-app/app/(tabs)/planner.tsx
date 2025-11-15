@@ -8,15 +8,26 @@ import {
   Pressable,
   TouchableOpacity,
 } from 'react-native';
-import { Trip, Place } from '../../types/planner-types';
+import { Trip, Place, PlaceStatus } from '../../types/planner-types';
 import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
 import { MapPin } from 'lucide-react-native';
 import mockdata from '../../assets/data/planned-trips.json'
 
 export default function PlannerPage() {
-  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>(mockdata.wantToGo);
-  const [trips, setTrips] = useState<Trip[]>(mockdata.trips);
+  const normalizedWantToGo: Place[] = (mockdata.wantToGo as Place[]).map((p : Place) => ({
+    ...p,
+    status: p.status as PlaceStatus,
+  }));
+  const normalizedTrips: Trip[] = (mockdata.trips as Trip[]).map((t: Trip) => ({
+    ...t,
+    places: (t.places as Place[]).map((p : Place) => ({
+      ...p,
+      status: p.status as PlaceStatus,
+    })),
+  }));
+  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>(normalizedWantToGo);
+  const [trips, setTrips] = useState<Trip[]>(normalizedTrips);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [placeToMove, setPlaceToMove] = useState<Place | null>(null);
 
@@ -52,11 +63,11 @@ export default function PlannerPage() {
     );
 
     if (placeToMoveGlobal) {
-      const unscheduledPlace: Place = {
-        ...placeToMoveGlobal,
-        status: 'want-to-go',
-        scheduledTime: null,
-      };
+    const unscheduledPlace: Place = {
+      ...(placeToMoveGlobal as Place),
+      status: 'want-to-go',
+      scheduledTime: null,
+    };
       setWantToGoPlaces((currentPlaces) => [
         unscheduledPlace,
         ...currentPlaces,
@@ -112,7 +123,7 @@ export default function PlannerPage() {
 
     // 2. If it's null or empty, fall back to 'dailyTravelTimes'
     if (!effectiveStartDate) {
-      const tripDays = Object.keys(selectedTrip.dailyTravelTimes).sort();
+      const tripDays = Object.keys(selectedTrip.dailyTravelTimes ?? {}).sort();
       if (tripDays.length > 0) {
         effectiveStartDate = tripDays[0]; // Get the first day from the sorted list
       }

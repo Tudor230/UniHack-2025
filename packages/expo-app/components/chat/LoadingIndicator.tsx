@@ -1,7 +1,6 @@
-import { StyleSheet, View, Animated } from 'react-native';
 import { useRef, useEffect } from 'react';
+import { StyleSheet, View, Animated } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
 
 export default function LoadingIndicator() {
   const colorScheme = useColorScheme();

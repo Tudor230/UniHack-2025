@@ -52,7 +52,7 @@ export function TripItinerary({
     const { details, dailyTravelTimes } = trip;
 
     // Get the sorted list of days from the travel times object
-    const daysFromTravelTimes = Object.keys(dailyTravelTimes).sort();
+    const daysFromTravelTimes = Object.keys(dailyTravelTimes ?? {}).sort();
 
     // LOGIC: Use details.startDate if it exists, otherwise fall back
     const startDate = details.startDate || (daysFromTravelTimes.length > 0 ? daysFromTravelTimes[0] : null);

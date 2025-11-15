@@ -32,20 +32,21 @@ export interface Location {
   /**
    * Details about the overall trip.
    */
-  export interface TripDetails {
-    destination: string;
-    startDate: string; // ISO 8601 string (date only)
-    endDate: string; // ISO 8601 string (date only)
-  }
+export interface TripDetails {
+  destination: string;
+  startDate: string | null; // ISO 8601 string (date only)
+  endDate: string | null; // ISO 8601 string (date only)
+}
   
   /**
    * Represents a complete Trip, including its details and places.
    */
-  export interface Trip {
-    id: string;
-    details: TripDetails;
-    places: Place[];
-  }
+export interface Trip {
+  id: string;
+  details: TripDetails;
+  places: Place[];
+  dailyTravelTimes?: Record<string, number[]>;
+}
   
   /**
    * The complete state for the trip store.
