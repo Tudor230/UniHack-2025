@@ -7,6 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PinStoreProvider } from '@/state/pins';
 import { UiBusProvider } from '@/state/ui-bus';
+import { ChatHistoryProvider } from '@/state/chat-history';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -20,11 +21,13 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <UiBusProvider>
           <PinStoreProvider>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="auto" />
+            <ChatHistoryProvider>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="auto" />
+            </ChatHistoryProvider>
           </PinStoreProvider>
         </UiBusProvider>
       </ThemeProvider>

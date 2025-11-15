@@ -7,12 +7,17 @@ import VoiceInputOverlay from '@/components/chat/VoiceInputOverlay';
 import { ChatMessage } from '@/components/chat/types';
 import { sendChat } from '@/utils/chat-api';
 import { useUiBus } from '@/state/ui-bus';
+import { useChatHistory } from '@/state/chat-history';
+import RecentChatsSidebar from '@/components/chat/RecentChatsSidebar';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -37,8 +42,13 @@ function GuideScreen() {
   const [recognizing, setRecognizing] = useState(false);
   const [attachmentUri, setAttachmentUri] = useState<string | undefined>();
   const [lightboxUri, setLightboxUri] = useState<string | undefined>();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
+  const { createSession, appendMessage, trySyncSession, loadSession } = useChatHistory();
+  const colorScheme = useColorScheme();
   const screen = Dimensions.get('window');
+  const insets = useSafeAreaInsets();
   const MIN_SCALE = 0.9;
   const MAX_SCALE = 4;
   const baseScale = useSharedValue(1);
@@ -215,6 +225,14 @@ function GuideScreen() {
     if (!content && !attachmentUri) return;
     const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content || undefined, imageUri: attachmentUri, ts: Date.now() };
     setMessages((prev) => [userMsg, ...prev]);
+    if (!currentSessionId) {
+      const sid = createSession(userMsg);
+      setCurrentSessionId(sid);
+      trySyncSession(sid);
+    } else {
+      appendMessage(currentSessionId, userMsg);
+      trySyncSession(currentSessionId);
+    }
     setCurrentInput('');
     setAttachmentUri(undefined);
     setIsLoading(true);
@@ -230,9 +248,17 @@ function GuideScreen() {
         ts: Date.now() + 1,
       };
       setMessages((prev) => [botMsg, ...prev]);
+      if (currentSessionId) {
+        appendMessage(currentSessionId, botMsg);
+        trySyncSession(currentSessionId);
+      }
     } catch {
       const errMsg: ChatMessage = { id: String(Date.now() + 2), role: 'bot', type: 'text', text: `I'm sorry, I'm having trouble connecting. Please try again in a moment.`, ts: Date.now() + 2 };
       setMessages((prev) => [errMsg, ...prev]);
+      if (currentSessionId) {
+        appendMessage(currentSessionId, errMsg);
+        trySyncSession(currentSessionId);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -262,9 +288,17 @@ function GuideScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {!isSidebarOpen ? (
+        <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 16, zIndex: 1000 }}>
+          <Pressable onPress={() => setIsSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
+            <Ionicons name="time-outline" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
+          </Pressable>
+        </View>
+      ) : null}
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled={!isSidebarOpen}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ChatWindow messages={messages} isLoading={isLoading} onChipPress={(s) => onSend(s)} onImageOpen={(uri) => { setLightboxUri(uri); resetTransforms(); }} />
@@ -279,6 +313,23 @@ function GuideScreen() {
           onRemoveAttachment={() => setAttachmentUri(undefined)}
         />
       </KeyboardAvoidingView>
+      <RecentChatsSidebar
+        visible={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onSelect={async (id) => {
+          const s = await loadSession(id);
+          if (s) {
+            setMessages(s.messages);
+            setCurrentSessionId(s.id);
+          }
+          setIsSidebarOpen(false);
+        }}
+        onNewChat={() => {
+          setMessages([]);
+          setCurrentSessionId(undefined);
+          setIsSidebarOpen(false);
+        }}
+      />
       <VoiceInputOverlay 
         visible={isListening} 
         transcription={liveTranscription} 
@@ -289,8 +340,8 @@ function GuideScreen() {
           <BlurView style={{ ...StyleSheet.absoluteFillObject }} intensity={100} tint="dark" />
           <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#000000CC' }} />
           <Pressable style={{ ...StyleSheet.absoluteFillObject, zIndex: 1 }} onPress={() => setLightboxUri(undefined)} />
-          <View style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
-            <Pressable onPress={() => setLightboxUri(undefined)} style={{ backgroundColor: '#00000088', borderRadius: 20, padding: 8, marginTop: 25 }}>
+          <View style={{ position: 'absolute', top: insets.top + 12, right: insets.right + 12, zIndex: 2 }}>
+            <Pressable onPress={() => setLightboxUri(undefined)} style={{ backgroundColor: '#00000088', borderRadius: 20, padding: 8 }}>
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </Pressable>
           </View>
