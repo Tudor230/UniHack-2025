@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import historyData from '@/assets/data/history-pins.json';
 
 export type PinType = 'want' | 'history' | 'bookable';
 
@@ -12,6 +13,7 @@ export type Pin = {
   notes?: string;
   source: 'user' | 'eye' | 'chat' | 'api';
   createdAt: number;
+  eventDate?: number;
 };
 
 type PinStoreState = {
@@ -32,15 +34,48 @@ const STORAGE_KEY = 'pinStore:v1';
 
 const Ctx = createContext<PinStore | null>(null);
 
+function getDefaultHistoryPins(): Pin[] {
+  console.log('Generating default history pins from JSON...');
+  return historyData.map((item: any) => ({
+    id: `hist-${item.name.replace(/\s+/g, '-')}`,
+    type: 'history',
+    coords: { latitude: item.latitude, longitude: item.longitude },
+    title: item.name,
+    source: 'api',
+    createdAt: Date.now(),
+  }));
+}
+
 export function PinStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<PinStoreState>(initialState);
 
   useEffect(() => {
     (async () => {
+      let loadedState = initialState;
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setState(JSON.parse(raw));
-      } catch {}
+        
+        if (raw) {
+          loadedState = JSON.parse(raw);
+          console.log('Loaded user state from storage.');
+        } else {
+          console.log('No user state found (first load or cleared).');
+        }
+        
+        const historyPins = getDefaultHistoryPins();
+
+        setState({
+          ...loadedState,
+          history: historyPins,
+        });
+
+      } catch (error) {
+        console.error('Failed to load pin data:', error);
+        setState({
+          ...initialState,
+          history: getDefaultHistoryPins(),
+        });
+      }
     })();
   }, []);
 
@@ -52,26 +87,39 @@ export function PinStoreProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [state]);
 
+  const addPin = useCallback((pin: Pin) => {
+    setState((prev) => {
+      const next = { ...prev };
+      if (pin.type === 'want') next.wantToGo = [pin, ...prev.wantToGo];
+      else if (pin.type === 'history') next.history = [pin, ...prev.history];
+      else next.bookable = [pin, ...prev.bookable];
+      return next;
+    });
+  }, []);
+
+  const removePin = useCallback((id: string) => {
+    setState((prev) => ({
+      wantToGo: prev.wantToGo.filter((p) => p.id !== id),
+      history: prev.history.filter((p) => p.id !== id),
+      bookable: prev.bookable.filter((p) => p.id !== id),
+    }));
+  }, []);
+
+  const clearAll = useCallback(() => {
+    console.log('Clearing all user pins, resetting history pins.');
+    const historyPins = getDefaultHistoryPins();
+    setState({
+      ...initialState,
+      history: historyPins,
+    });
+  }, []);
+
   const value: PinStore = useMemo(() => ({
     state,
-    addPin: (pin: Pin) => {
-      setState((prev) => {
-        const next = { ...prev };
-        if (pin.type === 'want') next.wantToGo = [pin, ...prev.wantToGo];
-        else if (pin.type === 'history') next.history = [pin, ...prev.history];
-        else next.bookable = [pin, ...prev.bookable];
-        return next;
-      });
-    },
-    removePin: (id: string) => {
-      setState((prev) => ({
-        wantToGo: prev.wantToGo.filter((p) => p.id !== id),
-        history: prev.history.filter((p) => p.id !== id),
-        bookable: prev.bookable.filter((p) => p.id !== id),
-      }));
-    },
-    clearAll: () => setState(initialState),
-  }), [state]);
+    addPin,
+    removePin,
+    clearAll,
+  }), [state, addPin, removePin, clearAll]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
