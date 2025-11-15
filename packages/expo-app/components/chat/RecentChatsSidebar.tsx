@@ -7,11 +7,13 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useChatHistory } from '@/state/chat-history';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function RecentChatsSidebar({ visible, onClose, onSelect, onNewChat }: {
+export default function RecentChatsSidebar({ visible, onClose, onSelect, onNewChat, currentSessionId, onDeleteCurrent }: {
   visible: boolean;
   onClose: () => void;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  currentSessionId?: string;
+  onDeleteCurrent?: () => void;
 }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -107,7 +109,10 @@ export default function RecentChatsSidebar({ visible, onClose, onSelect, onNewCh
                     <Pressable style={styles.iconBtn} onPress={() => {
                       Alert.alert('Delete chat', 'Are you sure you want to delete this chat?', [
                         { text: 'Cancel', style: 'cancel' },
-                        { text: 'Delete', style: 'destructive', onPress: () => deleteSession(item.id) },
+                        { text: 'Delete', style: 'destructive', onPress: () => { 
+                          deleteSession(item.id);
+                          if (currentSessionId && item.id === currentSessionId && onDeleteCurrent) onDeleteCurrent();
+                        } },
                       ]);
                     }}>
                       <Ionicons name="trash-outline" size={18} color="#FF3B30" />

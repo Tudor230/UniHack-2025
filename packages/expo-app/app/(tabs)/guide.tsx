@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions, Text } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import ChatWindow from '@/components/chat/ChatWindow';
+import StartingChat from '@/components/chat/StartingChat';
 import InputBar from '@/components/chat/InputBar';
 import VoiceInputOverlay from '@/components/chat/VoiceInputOverlay';
 import { ChatMessage } from '@/components/chat/types';
@@ -33,7 +34,7 @@ try {
   console.log('Speech recognition not available, using fallback');
 }
 
-function GuideScreen() {
+export default function GuideScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +46,7 @@ function GuideScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
-  const { createSession, appendMessage, trySyncSession, loadSession } = useChatHistory();
+  const { createSession, appendMessage, trySyncSession, loadSession, getSession } = useChatHistory();
   const colorScheme = useColorScheme();
   const screen = Dimensions.get('window');
   const insets = useSafeAreaInsets();
@@ -289,10 +290,17 @@ function GuideScreen() {
   return (
     <ThemedView style={styles.container}>
       {!isSidebarOpen ? (
-        <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 16, zIndex: 1000 }}>
+        <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 20, zIndex: 1000 }}>
           <Pressable onPress={() => setIsSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
             <Ionicons name="time-outline" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
           </Pressable>
+        </View>
+      ) : null}
+      {currentSessionId && !isSidebarOpen ? (
+        <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 0, right: insets.right + 0, alignItems: 'center', zIndex: 900 }}>
+          <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
+            <Text style={{ color: Colors[colorScheme ?? 'light'].text, fontSize: 16, fontWeight: '600' }}>{getSession(currentSessionId)?.title ?? ''}</Text>
+          </View>
         </View>
       ) : null}
       <KeyboardAvoidingView 
@@ -301,7 +309,11 @@ function GuideScreen() {
         enabled={!isSidebarOpen}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ChatWindow messages={messages} isLoading={isLoading} onChipPress={(s) => onSend(s)} onImageOpen={(uri) => { setLightboxUri(uri); resetTransforms(); }} />
+        {!currentSessionId ? (
+          <StartingChat onTemplateSelect={(s) => onSend(s)} />
+        ) : (
+          <ChatWindow messages={messages} isLoading={isLoading} onChipPress={(s) => onSend(s)} onImageOpen={(uri) => { setLightboxUri(uri); resetTransforms(); }} />
+        )}
         <InputBar 
           value={currentInput} 
           onChangeText={setCurrentInput} 
@@ -325,6 +337,12 @@ function GuideScreen() {
           setIsSidebarOpen(false);
         }}
         onNewChat={() => {
+          setMessages([]);
+          setCurrentSessionId(undefined);
+          setIsSidebarOpen(false);
+        }}
+        currentSessionId={currentSessionId}
+        onDeleteCurrent={() => {
           setMessages([]);
           setCurrentSessionId(undefined);
           setIsSidebarOpen(false);
@@ -365,5 +383,3 @@ function GuideScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
 });
-
-export default GuideScreen;
