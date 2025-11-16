@@ -36,18 +36,86 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
 
   const title = items.length === 1 ? (items[0]?.landmarkName || 'Location') : `${items[0]?.landmarkName || 'Locations'} and ${items.length - 1} more`;
 
-  const infoText = items
-    .map((item) => {
-      const lines: string[] = [];
-      lines.push(item.landmarkName);
-      if (item.publicAccess) lines.push(`Public Access: ${item.publicAccess}`);
-      if (item.openingHours) lines.push(`Hours: ${item.openingHours}`);
-      if (item.ticketPrices) lines.push(`Tickets: ${item.ticketPrices}`);
-      if (item.website) lines.push(`Website: ${item.website}`);
-      if (item.about) lines.push(item.about);
-      return lines.join('\n');
-    })
-    .join('\n\n');
+  const isConcrete = (v?: string) => {
+    if (!v) return false;
+    const s = String(v).trim();
+    if (!s) return false;
+    return !/^(unknown|n\/a|na|none|not available|unspecified|tbd|-|no data|no info|not found|no info available|not provided|not specified)$/i.test(s);
+  };
+
+  const shortenUrl = (url: string) => {
+    try {
+      const u = new URL(url);
+      const path = u.pathname && u.pathname !== '/' ? u.pathname : '';
+      return `${u.host}${path}`;
+    } catch {
+      return url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    }
+  };
+
+  const formatItemDetails = (item: MapItem) => {
+    const lines: string[] = [];
+    const name = item.landmarkName?.trim();
+    if (name) lines.push(name);
+    if (isConcrete(item.publicAccess)) lines.push(`Public Access: ${String(item.publicAccess).trim()}`);
+    if (isConcrete(item.openingHours)) lines.push(`Hours: ${String(item.openingHours).trim()}`);
+    if (isConcrete(item.ticketPrices)) lines.push(`Tickets: ${String(item.ticketPrices).trim()}`);
+    if (isConcrete(item.website)) lines.push(`Website: ${shortenUrl(String(item.website).trim())}`);
+    if (isConcrete(item.about)) {
+      const a = String(item.about).trim();
+      const clipped = a.length > 200 ? a.slice(0, 200) + '…' : a;
+      lines.push(clipped);
+    }
+    return lines;
+  };
+
+  const countConcreteDetails = (item: MapItem) => {
+    let n = 0;
+    if (isConcrete(item.publicAccess)) n++;
+    if (isConcrete(item.openingHours)) n++;
+    if (isConcrete(item.ticketPrices)) n++;
+    if (isConcrete(item.website)) n++;
+    if (isConcrete(item.about)) n++;
+    return n;
+  };
+
+  const buildInfoText = (items: MapItem[]) => {
+    if (!items.length) return '';
+    if (items.length === 1) {
+      const item = items[0]!;
+      const detailCount = countConcreteDetails(item);
+      if (detailCount >= 3) {
+        return formatItemDetails(item).join('\n');
+      }
+      if (detailCount >= 1) {
+        const parts: string[] = [];
+        if (isConcrete(item.openingHours)) parts.push(`Hours: ${String(item.openingHours).trim()}`);
+        if (isConcrete(item.ticketPrices)) parts.push(`Tickets: ${String(item.ticketPrices).trim()}`);
+        if (isConcrete(item.website)) parts.push(`Website: ${shortenUrl(String(item.website).trim())}`);
+        if (isConcrete(item.publicAccess)) parts.push(`Public Access: ${String(item.publicAccess).trim()}`);
+        return `${item.landmarkName?.trim() || 'Location'} — ${parts.join(' | ')}`;
+      }
+      return `${item.landmarkName?.trim() || 'Location'}.\n Use "Show on Map" to explore.`;
+    }
+    const lines: string[] = [];
+    let anyDetails = false;
+    items.forEach((item, idx) => {
+      const name = item.landmarkName?.trim() || `Location ${idx + 1}`;
+      const parts: string[] = [];
+      if (isConcrete(item.openingHours)) parts.push(`Hours: ${String(item.openingHours).trim()}`);
+      if (isConcrete(item.ticketPrices)) parts.push(`Tickets: ${String(item.ticketPrices).trim()}`);
+      if (isConcrete(item.publicAccess)) parts.push(`Public: ${String(item.publicAccess).trim()}`);
+      if (isConcrete(item.website)) parts.push(shortenUrl(String(item.website).trim()));
+      if (parts.length) anyDetails = true;
+      lines.push(`${idx + 1}) ${name}${parts.length ? ' — ' + parts.join(' | ') : ''}`);
+    });
+    if (!anyDetails) {
+      return `Found ${items.length} locations.\n Open the map to explore.`;
+    }
+    return lines.join('\n');
+  };
+
+  const infoText = buildInfoText(items);
 
   const bubbleMessage: ChatMessage = {
     id: `map-info-${Date.now()}`,
@@ -83,8 +151,8 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
 
   return (
     <View>
-      <View style={[styles.card, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}>
-        <Text style={[styles.headerTitle, { color: textColor }]}>{title}</Text>
+      <View style={[styles.card, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}> 
+        <Text style={[styles.headerTitle, { color: textColor }]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
         <View style={styles.mapContainer}>
           {region ? (
             <MapView

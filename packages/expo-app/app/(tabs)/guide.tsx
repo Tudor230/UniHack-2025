@@ -240,17 +240,30 @@ export default function GuideScreen() {
     if (!content && !attachmentUri) return;
     const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content || undefined, imageUri: attachmentUri, ts: Date.now() };
     setMessages((prev) => [userMsg, ...prev]);
-    if (currentSessionId) {
-      appendMessage(currentSessionId, userMsg);
-      trySyncSession(currentSessionId);
+    let activeId = currentSessionId;
+    if (!activeId) {
+      const localId = createSession(userMsg);
+      activeId = localId;
+      setCurrentSessionId(localId);
+      trySyncSession(localId);
+    } else {
+      appendMessage(activeId, userMsg);
+      trySyncSession(activeId);
     }
     const pendingAttachment = attachmentUri;
     setCurrentInput('');
     setAttachmentUri(undefined);
     setIsLoading(true);
     try {
-      const reply = await sendChat(content || '', pendingAttachment, currentSessionId);
+      const reply = await sendChat(content || '', pendingAttachment, activeId);
       let botMsg: ChatMessage;
+      const cleanupValue = (v: any): string | undefined => {
+        if (v === undefined || v === null) return undefined;
+        const s = typeof v === 'string' ? v.trim() : String(v).trim();
+        if (!s) return undefined;
+        if (/^(unknown|n\/a|na|none|not available|unspecified|tbd|-|no data|no info|not found|no info available|not provided|not specified)$/i.test(s)) return undefined;
+        return s;
+      };
       if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
         const first = reply[0] as any;
         const remoteId = first.sessionId ? String(first.sessionId) : undefined;
@@ -263,26 +276,13 @@ export default function GuideScreen() {
           suggestions: [],
           ts: Date.now() + 1,
         };
-        if (!currentSessionId) {
-          const localId = createSession(userMsg);
-          appendMessage(localId, botMsg);
-          if (remoteId) {
-            adoptSessionId(localId, remoteId);
-            setCurrentSessionId(remoteId);
-            trySyncSession(remoteId);
-          } else {
-            setCurrentSessionId(localId);
-            trySyncSession(localId);
-          }
+        appendMessage(activeId, botMsg);
+        if (remoteId) {
+          adoptSessionId(activeId, remoteId);
+          setCurrentSessionId(remoteId);
+          trySyncSession(remoteId);
         } else {
-          appendMessage(currentSessionId, botMsg);
-          if (remoteId) {
-            adoptSessionId(currentSessionId, remoteId);
-            setCurrentSessionId(remoteId);
-            trySyncSession(remoteId);
-          } else {
-            trySyncSession(currentSessionId);
-          }
+          trySyncSession(activeId);
         }
       } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
         const items = reply.map((r: any) => {
@@ -294,13 +294,13 @@ export default function GuideScreen() {
             }
           } catch {}
           return {
-            landmarkName: String(r.landmarkName ?? ''),
-            publicAccess: r.publicAccess ? String(r.publicAccess) : undefined,
+            landmarkName: cleanupValue(r.landmarkName) ?? 'Location',
+            publicAccess: cleanupValue(r.publicAccess),
             coords: coordsObj,
-            about: r.about ? String(r.about) : undefined,
-            openingHours: r.openingHours ? String(r.openingHours) : undefined,
-            ticketPrices: r.ticketPrices ? String(r.ticketPrices) : undefined,
-            website: r.website ? String(r.website) : undefined,
+            about: cleanupValue(r.about),
+            openingHours: cleanupValue(r.openingHours),
+            ticketPrices: cleanupValue(r.ticketPrices),
+            website: cleanupValue(r.website),
             id: r.id,
             createdAt: r.createdAt,
             updatedAt: r.updatedAt,
@@ -314,15 +314,8 @@ export default function GuideScreen() {
           suggestions: ['Open in Map', 'More details'],
           ts: Date.now() + 1,
         };
-        if (!currentSessionId) {
-          const localId = createSession(userMsg);
-          appendMessage(localId, botMsg);
-          trySyncSession(localId);
-          setCurrentSessionId(localId);
-        } else {
-          appendMessage(currentSessionId, botMsg);
-          trySyncSession(currentSessionId);
-        }
+        appendMessage(activeId, botMsg);
+        trySyncSession(activeId);
       } else {
          throw new Error('Invalid JSON response from server');
       }
@@ -333,6 +326,11 @@ export default function GuideScreen() {
       if (currentSessionId) {
         appendMessage(currentSessionId, errMsg);
         trySyncSession(currentSessionId);
+      } else {
+        const localId = createSession(userMsg);
+        appendMessage(localId, errMsg);
+        setCurrentSessionId(localId);
+        trySyncSession(localId);
       }
     } finally {
       setIsLoading(false);
@@ -390,7 +388,7 @@ export default function GuideScreen() {
       {currentSessionId && !isSidebarOpen ? (
         <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 0, right: insets.right + 0, alignItems: 'center', zIndex: 900 }}>
           <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
-            <Text style={{ color: Colors[colorScheme ?? 'light'].text, fontSize: 16, fontWeight: '600' }}>{getSession(currentSessionId)?.title ?? ''}</Text>
+            <Text style={{ color: Colors[colorScheme ?? 'light'].text, fontSize: 16, fontWeight: '600', maxWidth: "60%" }} numberOfLines={1} ellipsizeMode="tail">{getSession(currentSessionId)?.title ?? ''}</Text>
           </View>
         </View>
       ) : null}
