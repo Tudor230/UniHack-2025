@@ -133,16 +133,17 @@ function buildApp() {
 
   app.put("/places/:placeId/visited", async (request, reply) => {
     const placeId = (request.params as any).placeId;
+    const value = request.body;
 
     await app.db.query(
-      "update PROD.PUBLIC.PLACES set VISITED = 'true' where ID = ?",
-      [placeId]
+      "update PROD.PUBLIC.PLACES set VISITED = ? where ID = ?",
+      [value, placeId]
     );
 
     reply.send({ status: "success" });
   });
 
-  app.get('/events', async (request, reply) => {
+  app.get("/events", async (request, reply) => {
     const eventsResult = await app.db.query(
       `select ID, NAME, DESCRIPTION, LOCATION, SCHEDULED_TIME from PROD.PUBLIC.EVENTS`
     );
@@ -158,7 +159,7 @@ function buildApp() {
     );
   });
 
-  app.post('/events', async (request, reply) => {
+  app.post("/events", async (request, reply) => {
     const event = request.body as any;
 
     await app.db.query(
@@ -202,7 +203,7 @@ function buildApp() {
           place.status,
           place.scheduledTime,
           place.type,
-          place.visited ? 'true' : 'false',
+          place.visited ? "true" : "false",
           tripId,
         ]
       );
@@ -224,12 +225,16 @@ function buildApp() {
 
     await app.db.query(
       "update PROD.PUBLIC.TRIPS set DESTINATION = ?, START_DATE = ?, END_DATE = ? where ID = ?",
-      [trip.details.destination, trip.details.startDate, trip.details.endDate, tripId]
+      [
+        trip.details.destination,
+        trip.details.startDate,
+        trip.details.endDate,
+        tripId,
+      ]
     );
-    await app.db.query(
-      "delete from PROD.PUBLIC.PLACES where TRIP_ID = ?",
-      [tripId]
-    );
+    await app.db.query("delete from PROD.PUBLIC.PLACES where TRIP_ID = ?", [
+      tripId,
+    ]);
     await app.db.query(
       "delete from PROD.PUBLIC.DAILY_TRAVEL_TIMES where TRIP_ID = ?",
       [tripId]
@@ -245,7 +250,7 @@ function buildApp() {
           place.status,
           place.scheduledTime,
           place.type,
-          place.visited ? 'true' : 'false',
+          place.visited ? "true" : "false",
           tripId,
         ]
       );
@@ -267,13 +272,12 @@ function buildApp() {
     await app.db.query("delete from PROD.PUBLIC.PLACES where TRIP_ID = ?", [
       tripId,
     ]);
-    await app.db.query("delete from PROD.PUBLIC.DAILY_TRAVEL_TIMES where TRIP_ID = ?", [
-      tripId,
-    ]);
+    await app.db.query(
+      "delete from PROD.PUBLIC.DAILY_TRAVEL_TIMES where TRIP_ID = ?",
+      [tripId]
+    );
 
-    await app.db.query("delete from PROD.PUBLIC.TRIPS where ID = ?", [
-      tripId,
-    ]);
+    await app.db.query("delete from PROD.PUBLIC.TRIPS where ID = ?", [tripId]);
 
     reply.send({ status: "success" });
   });
