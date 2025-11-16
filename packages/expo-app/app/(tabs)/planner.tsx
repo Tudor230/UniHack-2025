@@ -12,7 +12,7 @@ import {
 import { Trip, Place, PlaceStatus } from '../../types/planner-types';
 import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
-import { MapPin } from 'lucide-react-native';
+import { MapPin, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -69,6 +69,8 @@ export default function PlannerPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isWantToGoMinimized, setIsWantToGoMinimized] = useState(false);
 
   useEffect(() => {
     const normalized = pinState.wantToGo.map(pinToPlace);
@@ -324,29 +326,46 @@ Please add it to my trip to: ${selectedTrip.details.destination}.
       >
         {/* --- Global "Want to Go" Section --- */}
         <ThemedView style={[styles.globalWantToGoSection, { borderColor: borderNeutral, backgroundColor: surfaceCard }] }>
-          <View style={styles.sectionHeader}>
-            <MapPin size={20} color={palette.tint} style={styles.sectionIcon} />
-            <ThemedText style={[styles.sectionTitle, { color: palette.text }]}>Want to Go</ThemedText>
-          </View>
-          {wantToGoPlaces.length > 0 ? (
-            wantToGoPlaces.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                onRemove={() => handleRemoveWantToGoPlace(place.id)}
-                onSchedule={() => handleOpenMoveModal(place)}
-                onUnschedule={() => {}} // Not applicable
-                onMarkAsVisited={() => {}} // Not applicable
-                onUndoVisit={() => {}}
-              />
-            ))
-          ) : (
-            <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
-              Your "Want to Go" list is empty.
-            </ThemedText>
+          
+          {/* 3a. Make the header pressable */}
+          <Pressable
+            style={styles.collapsibleSectionHeader}
+            onPress={() => setIsWantToGoMinimized(!isWantToGoMinimized)}
+          >
+            <View style={styles.sectionHeaderLeft}>
+              <MapPin size={20} color={palette.tint} style={styles.sectionIcon} />
+              <ThemedText style={[styles.sectionTitle, { color: palette.text }]}>Want to Go</ThemedText>
+            </View>
+            {isWantToGoMinimized ? (
+              <ChevronDown size={24} color={textSecondary} />
+            ) : (
+              <ChevronUp size={24} color={textSecondary} />
+            )}
+          </Pressable>
+
+          {/* 3b. Conditionally render the content */}
+          {!isWantToGoMinimized && (
+            <View style={styles.wantToGoContent}>
+              {wantToGoPlaces.length > 0 ? (
+                wantToGoPlaces.map((place) => (
+                  <PlaceCard
+                    key={place.id}
+                    place={place}
+                    onRemove={() => handleRemoveWantToGoPlace(place.id)}
+                    onSchedule={() => handleOpenMoveModal(place)}
+                    onUnschedule={() => {}} // Not applicable
+                    onMarkAsVisited={() => {}} // Not applicable
+                    onUndoVisit={() => {}}
+                  />
+                ))
+              ) : (
+                <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
+                  Your "Want toGo" list is empty.
+                </ThemedText>
+              )}
+            </View>
           )}
         </ThemedView>
-
         {/* --- Trips Section --- */}
         {trips.length > 0 ? (
           trips.map((trip) => (
@@ -413,15 +432,23 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     padding: 16,
-    gap: 12,
   },
-  sectionHeader: {
+  collapsibleSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionIcon: {
     marginRight: 8,
+  },
+  wantToGoContent: {
+    paddingTop: 12, // Creates space from the header
+    gap: 12, // Creates space between cards
   },
   sectionTitle: {
     fontSize: 18,
