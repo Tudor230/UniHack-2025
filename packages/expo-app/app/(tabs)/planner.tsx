@@ -13,14 +13,44 @@ import { Trip, Place, PlaceStatus } from '../../types/planner-types';
 import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
 import { MapPin } from 'lucide-react-native';
-import mockdata_wantToGo from '../../assets/data/wantToGo.json'
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { useRouter } from 'expo-router';
+import { usePins, Pin } from '@/state/pins';
 
 const TRIPS_API_URL = 'https://backend-507j.onrender.com/my/875812bb4985dff0ea018c65afc14ddf/trips';
+
+// This converts the Pin object from usePins into the Place object your planner needs
+function pinToPlace(pin: Pin): Place {
+  return {
+    id: pin.id,
+    name: pin.title,
+    location: {
+      lat: pin.coords.latitude,
+      lng: pin.coords.longitude,
+    },
+    status: 'want-to-go',
+    scheduledTime: pin.eventDate ? new Date(pin.eventDate).toISOString() : null,
+    type: 'activity', // Assuming all 'want-to-go' pins are 'activity'
+  };
+}
+
+// This converts a Place object back into a Pin to save it
+function placeToPin(place: Place): Pin {
+  return {
+    id: place.id,
+    title: place.name,
+    coords: {
+      latitude: place.location.lat,
+      longitude: place.location.lng,
+    },
+    type: 'want',
+    eventDate: place.scheduledTime ? new Date(place.scheduledTime).getTime() : undefined,
+    createdAt: Date.now(), // This will be a new creation timestamp
+  };
+}
 
 export default function PlannerPage() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -29,12 +59,10 @@ export default function PlannerPage() {
   const surface = palette.background;
   const surfaceCard = palette.background;
   const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
-  const normalizedWantToGo: Place[] = (mockdata_wantToGo.wantToGo as Place[]).map((p : Place) => ({
-    ...p,
-    status: p.status as PlaceStatus,
-  }));
 
-  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>(normalizedWantToGo);
+  const { state: pinState, addPin, removePin } = usePins();
+
+  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [placeToMove, setPlaceToMove] = useState<Place | null>(null);
@@ -43,7 +71,14 @@ export default function PlannerPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const normalized = pinState.wantToGo.map(pinToPlace);
+    setWantToGoPlaces(normalized);
+  }, [pinState.wantToGo]); // This runs when the component loads AND when pins change
+
+  useEffect(() => {
     const fetchData = async () => {
+      // Set loading to true only if it's not already loading (e.g. for a refresh)
+      if (!isLoading) setIsLoading(true);
       try {
         // Fetch both endpoints concurrently
         const [tripsResponse] = await Promise.all([
@@ -115,10 +150,11 @@ export default function PlannerPage() {
       status: 'want-to-go',
       scheduledTime: null,
     };
-      setWantToGoPlaces((currentPlaces) => [
-        unscheduledPlace,
-        ...currentPlaces,
-      ]);
+      // This updates the local UI
+      setWantToGoPlaces((currentPlaces) => [unscheduledPlace, ...currentPlaces]);
+      
+      // Convert 'Place' back to 'Pin' and add to global state
+      addPin(placeToPin(unscheduledPlace))
     }
   };
 
@@ -185,6 +221,9 @@ Please add it to my trip to: ${selectedTrip.details.destination}.
       currentPlaces.filter((place) => place.id !== placeToMove.id)
     );
 
+    // Remove from global state as well
+    removePin(placeToMove.id);
+
     // 3. Close the modal
     setIsModalVisible(false);
     setPlaceToMove(null);
@@ -197,9 +236,13 @@ Please add it to my trip to: ${selectedTrip.details.destination}.
   };
 
   const handleRemoveWantToGoPlace = (placeId: string) => {
+    // This updates the local UI
     setWantToGoPlaces((currentPlaces) =>
       currentPlaces.filter((place) => place.id !== placeId)
     );
+    
+    // Also remove it from the global state
+    removePin(placeId);
   };
 
   // --- END LOGIC ---
@@ -294,7 +337,7 @@ Please add it to my trip to: ${selectedTrip.details.destination}.
                 onSchedule={() => handleOpenMoveModal(place)}
                 onUnschedule={() => {}} // Not applicable
                 onMarkAsVisited={() => {}} // Not applicable
-                onUndoVisit={() => {}} // --- NEW ---
+                onUndoVisit={() => {}}
               />
             ))
           ) : (

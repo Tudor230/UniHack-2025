@@ -2,16 +2,14 @@ import React, { createContext, useContext, useEffect, useMemo, useState, useCall
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import historyData from '@/assets/data/history-pins.json';
 
-export type PinType = 'want' | 'history' | 'bookable';
+export type PinType = 'want' | 'events';
 
 export type Pin = {
   id: string;
   type: PinType;
   coords: { latitude: number; longitude: number };
-  placeId?: string;
   title: string;
   notes?: string;
-  source: 'user' | 'eye' | 'chat' | 'api';
   createdAt: number;
   eventDate?: number;
 };
@@ -37,10 +35,9 @@ function getDefaultHistoryPins(): Pin[] {
   console.log('Generating default history pins from JSON...');
   return historyData.map((item: any) => ({
     id: `hist-${item.name.replace(/\s+/g, '-')}`,
-    type: 'history',
+    type: 'events',
     coords: { latitude: item.latitude, longitude: item.longitude },
     title: item.name,
-    source: 'api',
     createdAt: Date.now(),
   }));
 }
