@@ -65,7 +65,7 @@ export default function InputBar({ value, onChangeText, onSend, isListening, onT
             />
           </TouchableOpacity>
           <TouchableOpacity 
-            style={[styles.sendBtn, disabled && styles.sendBtnDisabled]} 
+            style={[styles.sendBtn, { backgroundColor: Colors[colorScheme ?? 'light'].tint }, disabled && styles.sendBtnDisabled]} 
             onPress={onSend} 
             disabled={disabled}
           >
@@ -91,7 +91,6 @@ const styles = StyleSheet.create({
   voiceBtn: { padding: 6, borderRadius: 20 },
   voiceBtnActive: { backgroundColor: '#FF3B30' },
   sendBtn: { 
-    backgroundColor: '#007AFF', 
     width: 36,
     height: 36,
     borderRadius: 18,
