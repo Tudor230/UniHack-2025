@@ -240,19 +240,16 @@ export default function GuideScreen() {
     if (!content && !attachmentUri) return;
     const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content || undefined, imageUri: attachmentUri, ts: Date.now() };
     setMessages((prev) => [userMsg, ...prev]);
-    if (!currentSessionId) {
-      const sid = createSession(userMsg);
-      setCurrentSessionId(sid);
-      trySyncSession(sid);
-    } else {
+    if (currentSessionId) {
       appendMessage(currentSessionId, userMsg);
       trySyncSession(currentSessionId);
     }
+    const pendingAttachment = attachmentUri;
     setCurrentInput('');
     setAttachmentUri(undefined);
     setIsLoading(true);
     try {
-      const reply = await sendChat(content || '', messages);
+      const reply = await sendChat(content || '', pendingAttachment, currentSessionId);
       let botMsg: ChatMessage;
       if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
         const first = reply[0] as any;
@@ -266,9 +263,26 @@ export default function GuideScreen() {
           suggestions: [],
           ts: Date.now() + 1,
         };
-        if (remoteId) {
-          if (currentSessionId) adoptSessionId(currentSessionId, remoteId);
-          setCurrentSessionId(remoteId);
+        if (!currentSessionId) {
+          const localId = createSession(userMsg);
+          appendMessage(localId, botMsg);
+          if (remoteId) {
+            adoptSessionId(localId, remoteId);
+            setCurrentSessionId(remoteId);
+            trySyncSession(remoteId);
+          } else {
+            setCurrentSessionId(localId);
+            trySyncSession(localId);
+          }
+        } else {
+          appendMessage(currentSessionId, botMsg);
+          if (remoteId) {
+            adoptSessionId(currentSessionId, remoteId);
+            setCurrentSessionId(remoteId);
+            trySyncSession(remoteId);
+          } else {
+            trySyncSession(currentSessionId);
+          }
         }
       } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
         const items = reply.map((r: any) => {
@@ -300,14 +314,19 @@ export default function GuideScreen() {
           suggestions: ['Open in Map', 'More details'],
           ts: Date.now() + 1,
         };
+        if (!currentSessionId) {
+          const localId = createSession(userMsg);
+          appendMessage(localId, botMsg);
+          trySyncSession(localId);
+          setCurrentSessionId(localId);
+        } else {
+          appendMessage(currentSessionId, botMsg);
+          trySyncSession(currentSessionId);
+        }
       } else {
          throw new Error('Invalid JSON response from server');
       }
       setMessages((prev) => [botMsg, ...prev]);
-      if (currentSessionId) {
-        appendMessage(currentSessionId, botMsg);
-        trySyncSession(currentSessionId);
-      }
     } catch {
       const errMsg: ChatMessage = { id: String(Date.now() + 2), role: 'bot', type: 'text', text: `I'm sorry, I'm having trouble connecting. Please try again in a moment.`, ts: Date.now() + 2 };
       setMessages((prev) => [errMsg, ...prev]);
