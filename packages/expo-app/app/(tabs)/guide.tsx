@@ -47,7 +47,7 @@ export default function GuideScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
-  const { createSession, appendMessage, trySyncSession, loadSession, getSession } = useChatHistory();
+  const { createSession, appendMessage, trySyncSession, loadSession, getSession, adoptSessionId } = useChatHistory();
   const colorScheme = useColorScheme();
   const screen = Dimensions.get('window');
   const insets = useSafeAreaInsets();
@@ -253,15 +253,56 @@ export default function GuideScreen() {
     setIsLoading(true);
     try {
       const reply = await sendChat(content || '', messages);
-      const botMsg: ChatMessage = {
-        id: String(Date.now() + 1),
-        role: 'bot',
-        type: reply.type === 'card' ? 'card' : 'text',
-        text: reply.type !== 'card' ? String(reply.content ?? '') : undefined,
-        card: reply.type === 'card' ? reply.content : undefined,
-        suggestions: Array.isArray(reply.suggestions) ? reply.suggestions : [],
-        ts: Date.now() + 1,
-      };
+      let botMsg: ChatMessage;
+      if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
+        const first = reply[0] as any;
+        const remoteId = first.sessionId ? String(first.sessionId) : undefined;
+        const botText = String(first.responseText ?? '');
+        botMsg = {
+          id: String(Date.now() + 1),
+          role: 'bot',
+          type: 'text',
+          text: botText,
+          suggestions: [],
+          ts: Date.now() + 1,
+        };
+        if (remoteId) {
+          if (currentSessionId) adoptSessionId(currentSessionId, remoteId);
+          setCurrentSessionId(remoteId);
+        }
+      } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
+        const items = reply.map((r: any) => {
+          let coordsObj: { latitude: number; longitude: number } | undefined;
+          try {
+            const parsed = typeof r.coords === 'string' ? JSON.parse(r.coords) : r.coords;
+            if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+              coordsObj = { latitude: parsed.latitude, longitude: parsed.longitude };
+            }
+          } catch {}
+          return {
+            landmarkName: String(r.landmarkName ?? ''),
+            publicAccess: r.publicAccess ? String(r.publicAccess) : undefined,
+            coords: coordsObj,
+            about: r.about ? String(r.about) : undefined,
+            openingHours: r.openingHours ? String(r.openingHours) : undefined,
+            ticketPrices: r.ticketPrices ? String(r.ticketPrices) : undefined,
+            website: r.website ? String(r.website) : undefined,
+            id: r.id,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          };
+        });
+        botMsg = {
+          id: String(Date.now() + 1),
+          role: 'bot',
+          type: 'map',
+          mapItems: items,
+          suggestions: ['Open in Map', 'More details'],
+          ts: Date.now() + 1,
+        };
+      } else {
+         throw new Error('Invalid JSON response from server');
+      }
       setMessages((prev) => [botMsg, ...prev]);
       if (currentSessionId) {
         appendMessage(currentSessionId, botMsg);
@@ -302,10 +343,27 @@ export default function GuideScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container] }>
       {!isSidebarOpen ? (
         <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 20, zIndex: 1000 }}>
-          <Pressable onPress={() => setIsSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
+          <Pressable
+            onPress={() => setIsSidebarOpen(true)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7',
+              borderWidth: 1.5,
+              borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA',
+              shadowColor: '#000',
+              shadowOpacity: 0.2,
+              shadowOffset: { width: 0, height: 2 },
+              shadowRadius: 4,
+              elevation: 4,
+            }}
+          >
             <Ionicons name="time-outline" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
           </Pressable>
         </View>

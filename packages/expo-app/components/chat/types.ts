@@ -12,12 +12,26 @@ export type ChatCard = {
   actions?: ChatAction[];
 };
 
+export type MapItem = {
+  landmarkName: string;
+  publicAccess?: string;
+  coords?: { latitude: number; longitude: number };
+  about?: string;
+  openingHours?: string;
+  ticketPrices?: string;
+  website?: string;
+  id?: number | string;
+  createdAt?: string | number;
+  updatedAt?: string | number;
+};
+
 export type ChatMessage = {
   id: string;
   role: 'user' | 'bot';
-  type: 'text' | 'card';
+  type: 'text' | 'card' | 'map';
   text?: string;
   card?: ChatCard;
+  mapItems?: MapItem[];
   imageUri?: string;
   suggestions?: string[];
   ts: number;
