@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: backend
+    env: node
+    plan: free
+    region: frankfurt
+    rootDir: packages/backend
+    buildCommand: yarn install --immutable
+    startCommand: yarn start
+    envVars:
+      - key: SNOWFLAKE_TOKEN
+        sync: false
