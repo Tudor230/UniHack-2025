@@ -33,7 +33,7 @@ function buildApp() {
       await Promise.all(
         tripsResult.data.map(async (r) => {
           const placesResult = await app.db.query(
-            `select NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE from PROD.PUBLIC.PLACES where TRIP_ID = ?`,
+            `select ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE from PROD.PUBLIC.PLACES where TRIP_ID = ?`,
             [r[0]]
           );
           const dailyTimesResult = await app.db.query(
@@ -42,15 +42,17 @@ function buildApp() {
           );
 
           return {
-            destination: r[0],
-            startDate: r[1],
-            endDate: r[2],
+            id: r[0],
+            destination: r[1],
+            startDate: r[2],
+            endDate: r[3],
             places: placesResult.data.map((pr) => ({
-              name: pr[0],
-              location: JSON.parse(pr[1]),
-              status: pr[2],
-              scheduledTime: new Date(parseFloat(pr[3]) * 1000).toISOString(),
-              type: pr[4],
+              id: pr[0],
+              name: pr[1],
+              location: JSON.parse(pr[2]),
+              status: pr[3],
+              scheduledTime: new Date(parseFloat(pr[4]) * 1000).toISOString(),
+              type: pr[5],
             })),
             dailyTravelTimes: Object.fromEntries(
               dailyTimesResult.data.map((dr) => [
