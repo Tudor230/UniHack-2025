@@ -19,7 +19,6 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ChatTestHarness from '@/components/chat/ChatTestHarness';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
