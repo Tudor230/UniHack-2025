@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
-import MapView, { LongPressEvent, LatLng, Region } from 'react-native-maps';
+import MapView, { LongPressEvent, LatLng, Region, Marker } from 'react-native-maps';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { ThemedView } from '@/components/themed-view';
 import { PinMarkers } from '@/components/map/PinMarkers';
@@ -20,6 +20,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import * as Location from 'expo-location';
+import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
  
 export default function MapScreen() {
@@ -39,6 +40,8 @@ export default function MapScreen() {
 
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedCoord, setSelectedCoord] = useState<LatLng | null>(null);
+  const params = useLocalSearchParams<{ lat?: string; lon?: string }>();
 
   const [followsUser, setFollowsUser] = useState(true); // Follows by default
   const [currentUserLocation, setCurrentUserLocation] = useState<LatLng | null>(null);
@@ -71,6 +74,14 @@ export default function MapScreen() {
       };
       setInitialRegion(region);
       setCurrentUserLocation(location.coords); // Also set current location
+
+      const lat = params.lat ? parseFloat(String(params.lat)) : undefined;
+      const lon = params.lon ? parseFloat(String(params.lon)) : undefined;
+      if (typeof lat === 'number' && typeof lon === 'number' && !Number.isNaN(lat) && !Number.isNaN(lon)) {
+        setFollowsUser(false);
+        setSelectedCoord({ latitude: lat, longitude: lon });
+        mapRef.current?.animateToRegion({ latitude: lat, longitude: lon, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 300);
+      }
 
       // 4b. Start *watching* the user's position
       locationSubscription.current = await Location.watchPositionAsync(
@@ -189,6 +200,9 @@ export default function MapScreen() {
           wantToGo={state.wantToGo}
           events={state.events}
         />
+        {selectedCoord ? (
+          <Marker coordinate={selectedCoord} title="Selected Location" />
+        ) : null}
       </MapView>
 
       {/* This button only appears if 'followsUser' is false */}

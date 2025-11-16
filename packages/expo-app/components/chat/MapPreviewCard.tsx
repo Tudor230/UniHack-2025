@@ -1,4 +1,4 @@
-import { Linking, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
@@ -57,12 +57,7 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
     ts: Date.now(),
   };
 
-  const handleBook = () => {
-    const site = items[0]?.website;
-    if (site) Linking.openURL(site);
-  };
-
-  const handlePin = () => {
+  const handleSave = () => {
     const first = items[0];
     if (first?.coords) {
       addPin({
@@ -70,11 +65,20 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
         type: 'want',
         coords: { latitude: first.coords.latitude, longitude: first.coords.longitude },
         title: first.landmarkName || 'Pinned Location',
-        source: 'chat',
         createdAt: Date.now(),
       });
     }
     router.push('/(tabs)/map');
+  };
+
+  const handleShow = () => {
+    const first = items[0];
+    if (first?.coords) {
+      const { latitude, longitude } = first.coords;
+      router.push({ pathname: '/(tabs)/map', params: { lat: String(latitude), lon: String(longitude) } });
+    } else {
+      router.push('/(tabs)/map');
+    }
   };
 
   return (
@@ -105,11 +109,11 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
           )}
         </View>
       <View style={styles.actions}>
-        <TouchableOpacity style={[styles.btn, { backgroundColor: tint }]} onPress={handleBook}>
-          <Text style={styles.btnText}>Book Now</Text>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: tint }]} onPress={handleShow}>
+          <Text style={styles.btnText}>Show on Map</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.btnSecondary, { backgroundColor: tint }]} onPress={handlePin}>
-          <Text style={styles.btnText}>Pin on Map</Text>
+        <TouchableOpacity style={[styles.btnSecondary, { backgroundColor: tint }]} onPress={handleSave}>
+          <Text style={styles.btnText}>Save to Want to Go</Text>
         </TouchableOpacity>
       </View>
       </View>
@@ -125,8 +129,8 @@ const styles = StyleSheet.create({
   map: { width: '100%', height: 200 },
   mapFallback: { width: '100%', height: 200, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 16, fontWeight: '600' },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  btn: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  btnSecondary: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  btnText: { color: '#FFFFFF' },
+  actions: { flexDirection: 'row', display: 'flex', gap: 8, marginTop: 10, width: '100%' },
+  btn: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 12, borderRadius: 8, flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  btnSecondary: { backgroundColor: '#007AFF', paddingHorizontal: 12, paddingVertical: 12, borderRadius: 8, flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  btnText: { color: '#FFFFFF', fontWeight: '600' },
 });
