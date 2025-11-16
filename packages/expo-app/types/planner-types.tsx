@@ -24,6 +24,7 @@ export interface Location {
     name: string;
     location: Location;
     status: PlaceStatus;
+    visited: boolean;
     scheduledTime: string | null; // ISO 8601 string
     type: PlaceType;
     notes?: string;
