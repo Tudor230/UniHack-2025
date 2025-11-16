@@ -3,6 +3,7 @@ import autoload from "@fastify/autoload";
 import axios from "fastify-axios";
 import jwt from "@fastify/jwt";
 import "dotenv/config";
+import bcrypt from "bcrypt";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -13,12 +14,53 @@ function buildApp() {
 
   app.register(axios);
 
-  // app.register(jwt, {
-  //   secret: process.env.JWT_SECRET,
-  // });
+  app.register(jwt, {
+    secret: process.env.JWT_SECRET,
+  });
 
   app.register(autoload, {
     dir: `${__dirname}/plugins`,
+  });
+
+  app.post("/register", async (request, reply) => {
+    const { email, username, fullName, password } = request.body as any;
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userId = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+
+    await app.db.query(
+      "insert into PROD.PUBLIC.USERS (ID, EMAIL, USERNAME, FULL_NAME, CREATED_AT, PASSWORD_HASH) VALUES (?, ?, ?, ?, ?, ?)",
+      [userId, email, username, fullName, createdAt, passwordHash]
+    );
+
+    const token = app.jwt.sign({ userId, username });
+
+    reply.send({ status: "success", userId, token });
+  });
+
+  app.post("/login", async (request, reply) => {
+    const { email, password } = request.body as any;
+
+    const userResult = await app.db.query(
+      "select ID, PASSWORD_HASH, USERNAME from PROD.PUBLIC.USERS where EMAIL = ?",
+      [email]
+    );
+
+    if (userResult.data.length === 0) {
+      return reply.status(401).send({ error: "Invalid email or password" });
+    }
+
+    const [userId, passwordHash, username] = userResult.data[0];
+
+    const passwordMatch = await bcrypt.compare(password, passwordHash);
+    if (!passwordMatch) {
+      return reply.status(401).send({ error: "Invalid email or password" });
+    }
+
+    const token = app.jwt.sign({ userId, username });
+
+    reply.send({ status: "success", userId, token });
   });
 
   app.get("/my/:userId/trips", async (request, reply) => {
@@ -45,8 +87,16 @@ function buildApp() {
             id: r[0],
             details: {
               destination: r[1],
-              startDate: r[2] ? new Date(parseFloat(r[2]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0] : null,
-              endDate: r[3] ? new Date(parseFloat(r[3]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0] : null,
+              startDate: r[2]
+                ? new Date(parseFloat(r[2]) * 1000 * 60 * 60 * 24)
+                    .toISOString()
+                    .split("T")[0]
+                : null,
+              endDate: r[3]
+                ? new Date(parseFloat(r[3]) * 1000 * 60 * 60 * 24)
+                    .toISOString()
+                    .split("T")[0]
+                : null,
             },
             places: placesResult.data.map((pr) => ({
               id: pr[0],
