@@ -78,6 +78,7 @@ export default function App() {
 
         // 4. Call login with the token AND the extracted username
         await login(data.token, usernameToSave);
+        router.replace('/guide');
       } else {
         Alert.alert('Sign Up Failed', data.message || 'Something went wrong');
       }
