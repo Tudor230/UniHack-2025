@@ -105,7 +105,7 @@ function buildApp() {
               status: pr[3],
               scheduledTime: new Date(parseFloat(pr[4]) * 1000).toISOString(),
               type: pr[5],
-              visited: Boolean(pr[6]),
+              visited: pr[6] === 'true' ? true : false,
             })),
             dailyTravelTimes: Object.fromEntries(
               dailyTimesResult.data.map((dr) => [
