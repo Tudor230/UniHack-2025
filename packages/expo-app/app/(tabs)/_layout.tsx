@@ -11,23 +11,31 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      initialRouteName="guide"
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="index"
+        name="guide"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Guide',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="map"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Map',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="map.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="planner"
+        options={{
+          title: 'Planner',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
     </Tabs>

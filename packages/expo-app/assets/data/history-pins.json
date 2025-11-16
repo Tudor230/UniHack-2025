@@ -1,0 +1,17 @@
+[
+    {
+      "name": "Eiffel Tower",
+      "latitude": 48.8584,
+      "longitude": 2.2945
+    },
+    {
+      "name": "Colosseum",
+      "latitude": 45.438333,
+      "longitude": 10.994444
+    },
+    {
+      "name": "Statue of Liberty",
+      "latitude": 40.6892,
+      "longitude": -74.0445
+    }
+  ]
