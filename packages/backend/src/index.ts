@@ -43,9 +43,11 @@ function buildApp() {
 
           return {
             id: r[0],
-            destination: r[1],
-            startDate: r[2],
-            endDate: r[3],
+            details: {
+              destination: r[1],
+              startDate: r[2],
+              endDate: r[3],
+            },
             places: placesResult.data.map((pr) => ({
               id: pr[0],
               name: pr[1],
@@ -113,9 +115,12 @@ function buildApp() {
 
 const fastify = buildApp();
 
-fastify.listen({ port: process.env.PORT || 3000, host: "0.0.0.0" }, function (err, address) {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
+fastify.listen(
+  { port: process.env.PORT || 3000, host: "0.0.0.0" },
+  function (err, address) {
+    if (err) {
+      fastify.log.error(err);
+      process.exit(1);
+    }
   }
-});
+);
