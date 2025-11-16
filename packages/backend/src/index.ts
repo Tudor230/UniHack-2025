@@ -45,8 +45,8 @@ function buildApp() {
             id: r[0],
             details: {
               destination: r[1],
-              startDate: r[2],
-              endDate: r[3],
+              startDate: new Date(parseFloat(r[2]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0],
+              endDate: new Date(parseFloat(r[3]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0],
             },
             places: placesResult.data.map((pr) => ({
               id: pr[0],
