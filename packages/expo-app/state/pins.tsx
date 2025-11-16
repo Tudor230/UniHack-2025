@@ -18,8 +18,7 @@ export type Pin = {
 
 type PinStoreState = {
   wantToGo: Pin[];
-  history: Pin[];
-  bookable: Pin[];
+  events: Pin[];
 };
 
 type PinStore = {
@@ -29,7 +28,7 @@ type PinStore = {
   clearAll: () => void;
 };
 
-const initialState: PinStoreState = { wantToGo: [], history: [], bookable: [] };
+const initialState: PinStoreState = { wantToGo: [], events: []};
 const STORAGE_KEY = 'pinStore:v1';
 
 const Ctx = createContext<PinStore | null>(null);
@@ -66,14 +65,14 @@ export function PinStoreProvider({ children }: { children: React.ReactNode }) {
 
         setState({
           ...loadedState,
-          history: historyPins,
+          events: historyPins,
         });
 
       } catch (error) {
         console.error('Failed to load pin data:', error);
         setState({
           ...initialState,
-          history: getDefaultHistoryPins(),
+          events: getDefaultHistoryPins(),
         });
       }
     })();
@@ -91,8 +90,7 @@ export function PinStoreProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => {
       const next = { ...prev };
       if (pin.type === 'want') next.wantToGo = [pin, ...prev.wantToGo];
-      else if (pin.type === 'history') next.history = [pin, ...prev.history];
-      else next.bookable = [pin, ...prev.bookable];
+      else next.events = [pin, ...prev.events];
       return next;
     });
   }, []);
@@ -100,8 +98,7 @@ export function PinStoreProvider({ children }: { children: React.ReactNode }) {
   const removePin = useCallback((id: string) => {
     setState((prev) => ({
       wantToGo: prev.wantToGo.filter((p) => p.id !== id),
-      history: prev.history.filter((p) => p.id !== id),
-      bookable: prev.bookable.filter((p) => p.id !== id),
+      events: prev.events.filter((p) => p.id !== id)
     }));
   }, []);
 
@@ -110,7 +107,7 @@ export function PinStoreProvider({ children }: { children: React.ReactNode }) {
     const historyPins = getDefaultHistoryPins();
     setState({
       ...initialState,
-      history: historyPins,
+      events: historyPins,
     });
   }, []);
 

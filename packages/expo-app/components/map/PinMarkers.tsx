@@ -4,11 +4,10 @@ import { Pin } from '@/state/pins';
 
 type PinMarkersProps = {
   wantToGo: Pin[];
-  history: Pin[];
-  bookable: Pin[];
+  events: Pin[];
 };
 
-export function PinMarkers({ wantToGo, history, bookable }: PinMarkersProps) {
+export function PinMarkers({ wantToGo, events }: PinMarkersProps) {
   return (
     <>
       {wantToGo.map((pin) => (
@@ -21,7 +20,7 @@ export function PinMarkers({ wantToGo, history, bookable }: PinMarkersProps) {
         />
       ))}
 
-      {history.map((pin) => (
+      {events.map((pin) => (
         <Marker
           key={pin.id}
           coordinate={pin.coords}
@@ -31,15 +30,6 @@ export function PinMarkers({ wantToGo, history, bookable }: PinMarkersProps) {
         />
       ))}
 
-      {bookable.map((pin) => (
-        <Marker
-          key={pin.id}
-          coordinate={pin.coords}
-          title={pin.title}
-          description={pin.notes}
-          pinColor="green"
-        />
-      ))}
     </>
   );
 }

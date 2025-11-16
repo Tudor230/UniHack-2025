@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,20 @@ import {
   Modal,
   Pressable,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { Trip, Place, PlaceStatus } from '../../types/planner-types';
 import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
 import { MapPin } from 'lucide-react-native';
-import mockdata from '../../assets/data/planned-trips.json'
+import mockdata_wantToGo from '../../assets/data/wantToGo.json'
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { useRouter } from 'expo-router';
+
+const TRIPS_API_URL = 'https://backend-507j.onrender.com/my/875812bb4985dff0ea018c65afc14ddf/trips';
 
 export default function PlannerPage() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -25,22 +29,55 @@ export default function PlannerPage() {
   const surface = palette.background;
   const surfaceCard = palette.background;
   const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
-  const normalizedWantToGo: Place[] = (mockdata.wantToGo as Place[]).map((p : Place) => ({
+  const normalizedWantToGo: Place[] = (mockdata_wantToGo.wantToGo as Place[]).map((p : Place) => ({
     ...p,
     status: p.status as PlaceStatus,
   }));
-  const normalizedTrips: Trip[] = (mockdata.trips as Trip[]).map((t: Trip) => ({
-    ...t,
-    places: (t.places as Place[]).map((p : Place) => ({
-      ...p,
-      status: p.status as PlaceStatus,
-    })),
-  }));
+
   const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>(normalizedWantToGo);
-  const [trips, setTrips] = useState<Trip[]>(normalizedTrips);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [placeToMove, setPlaceToMove] = useState<Place | null>(null);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch both endpoints concurrently
+        const [tripsResponse] = await Promise.all([
+          fetch(TRIPS_API_URL),
+        ]);
+
+        if (!tripsResponse.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        // Parse the JSON data
+        const tripsData = await tripsResponse.json();
+
+        const normalizedTrips: Trip[] = (tripsData as Trip[]).map((t: Trip) => ({
+          ...t,
+          places: (t.places as Place[]).map((p: Place) => ({
+            ...p,
+            status: p.status as PlaceStatus,
+          })),
+        }));
+
+        // SET the state with the fetched data
+        setTrips(normalizedTrips);
+
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
   // --- LOGIC ---
 
   const handleRemovePlace = (tripId: string, placeId: string) => {
@@ -122,57 +159,41 @@ export default function PlannerPage() {
     setIsModalVisible(true);
   };
 
+  const router = useRouter();
+
+  // --- THIS IS THE MODIFIED FUNCTION ---
   const handleMovePlaceToTrip = (tripId: string) => {
     if (!placeToMove) return;
     const selectedTrip = trips.find((trip) => trip.id === tripId);
     if (!selectedTrip) return;
 
-    // --- UPDATED LOGIC ---
-    // 1. Try to get the start date from 'details'
-    let effectiveStartDate = selectedTrip.details.startDate;
+    // 1. Create a more detailed prompt string.
+    // We use a template literal (backticks ``) to build a multi-line string.
+    const generatedPrompt = `
+Hi! Can you please schedule the following activity?
 
-    // 2. If it's null or empty, fall back to 'dailyTravelTimes'
-    if (!effectiveStartDate) {
-      const tripDays = Object.keys(selectedTrip.dailyTravelTimes ?? {}).sort();
-      if (tripDays.length > 0) {
-        effectiveStartDate = tripDays[0]; // Get the first day from the sorted list
-      }
-    }
+Activity Details:
+- Name: ${placeToMove.name}
+- Type: ${placeToMove.type}
+- Location (Lat, Lng): ${placeToMove.location.lat}, ${placeToMove.location.lng}
 
-    // 3. If there's still no date, we can't schedule.
-    if (!effectiveStartDate) {
-      alert('This trip has no days and cannot be scheduled.');
-      return;
-    }
-    // --- END UPDATE ---
+Please add it to my trip to: ${selectedTrip.details.destination}.
+    `.trim(); // .trim() removes any extra whitespace from the beginning or end
 
-    const scheduledPlace: Place = {
-      ...placeToMove,
-      status: 'scheduled',
-      // --- UPDATED ---
-      // Use the 'effectiveStartDate' variable
-      scheduledTime: `${effectiveStartDate}T09:00:00`,
-      // --- END UPDATE ---
-    };
-
-    setTrips((currentTrips) =>
-      currentTrips.map((trip) => {
-        if (trip.id === tripId) {
-          return {
-            ...trip,
-            places: [...trip.places, scheduledPlace],
-          };
-        }
-        return trip;
-      })
-    );
-
+    // 2. Remove the place from "Want to Go"
     setWantToGoPlaces((currentPlaces) =>
       currentPlaces.filter((place) => place.id !== placeToMove.id)
     );
 
+    // 3. Close the modal
     setIsModalVisible(false);
     setPlaceToMove(null);
+
+    // 4. Navigate to the 'guide' tab and pass the new, detailed prompt
+    router.push({
+      pathname: '/guide', // This is the path to guide.tsx in your (tabs) layout
+      params: { autoPrompt: generatedPrompt },
+    });
   };
 
   const handleRemoveWantToGoPlace = (placeId: string) => {
@@ -182,6 +203,31 @@ export default function PlannerPage() {
   };
 
   // --- END LOGIC ---
+
+  if (isLoading) {
+    return (
+      <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
+        <ActivityIndicator size="large" color={palette.tint} />
+        <ThemedText style={{ marginTop: 10 }}>Loading your plans...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (error) {
+    return (
+      <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
+        <ThemedText type="subtitle" style={{ color: 'red' }}>Error</ThemedText>
+        <ThemedText>{error}</ThemedText>
+        <TouchableOpacity onPress={() => {
+          setIsLoading(true);
+          setError(null);
+          // You would re-run the fetch logic here, or just refresh
+        }}>
+          <ThemedText style={{ color: palette.tint, marginTop: 15 }}>Try again</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={[styles.pageContainer, { backgroundColor: palette.background }]}>
@@ -397,5 +443,10 @@ export const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '500',
     fontSize: 16,
+  },
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
