@@ -1,13 +1,39 @@
 import { ChatMessage } from '@/components/chat/types';
 
-export async function sendChat(query: string, history: ChatMessage[]) {
-  const res = await fetch('/n8n/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, history }),
-  });
-  if (!res.ok) throw new Error('Chat API failed');
-  return res.json();
+export async function sendChat(query: string, attachmentUri?: string, sessionId?: string) {
+  const endpoint = 'https://tudor230.app.n8n.cloud/webhook-test/74ee0fbe-6bde-42c4-aa42-cef9de496ce6';
+  const userId = '875812bb4985dff0ea018c65afc14ddf';
+  const location = { latitude: 46.766667, longitude: 23.583333 };
+
+  if (attachmentUri) {
+    const form = new FormData();
+    const coords = `${location.latitude} ${location.longitude}`;
+    form.append('userId', userId);
+    form.append('coords', coords);
+    if (sessionId) form.append('sessionId', String(sessionId));
+    const ext = (() => {
+      const match = attachmentUri.split('?')[0].split('#')[0].match(/\.([a-zA-Z0-9]+)$/);
+      return match ? match[1].toLowerCase() : 'jpg';
+    })();
+    const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+    form.append('image', { uri: attachmentUri, name: `image.${ext}`, type: mime } as any);
+    const res = await fetch(endpoint, { method: 'POST', body: form });
+    if (!res.ok) throw new Error('Chat API failed');
+    return res.json();
+  } else {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        message: query,
+        sessionId: sessionId ?? null,
+        location,
+      }),
+    });
+    if (!res.ok) throw new Error('Chat API failed');
+    return res.json();
+  }
 }
 
 type ChatSessionPayload = {

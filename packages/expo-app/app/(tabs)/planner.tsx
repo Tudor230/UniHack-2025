@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,19 +8,51 @@ import {
   Pressable,
   TouchableOpacity,
   ActivityIndicator,
+  Alert, // <-- ADDED: Alert for network errors
 } from 'react-native';
 import { Trip, Place, PlaceStatus } from '../../types/planner-types';
 import { TripItinerary } from '../../components/planner/TripItinerary';
 import { PlaceCard } from '../../components/planner/PlaceCard';
-import { MapPin } from 'lucide-react-native';
-import mockdata_wantToGo from '../../assets/data/wantToGo.json'
+import { MapPin, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { usePins, Pin } from '@/state/pins';
 
-const TRIPS_API_URL = 'https://backend-507j.onrender.com/my/875812bb4985dff0ea018c65afc14ddf/trips';
+const BASE_API_URL = 'https://backend-507j.onrender.com';
+const TRIPS_API_URL = `${BASE_API_URL}/my/875812bb4985dff0ea018c65afc14ddf/trips`;
+
+// This converts the Pin object from usePins into the Place object your planner needs
+function pinToPlace(pin: Pin): Place {
+  return {
+    id: pin.id,
+    name: pin.title,
+    location: {
+      lat: pin.coords.latitude,
+      lng: pin.coords.longitude,
+    },
+    status: 'want-to-go',
+    scheduledTime: pin.eventDate ? new Date(pin.eventDate).toISOString() : null,
+    type: 'activity', // Assuming all 'want-to-go' pins are 'activity'
+  };
+}
+
+// This converts a Place object back into a Pin to save it
+function placeToPin(place: Place): Pin {
+  return {
+    id: place.id,
+    title: place.name,
+    coords: {
+      latitude: place.location.lat,
+      longitude: place.location.lng,
+    },
+    type: 'want',
+    eventDate: place.scheduledTime ? new Date(place.scheduledTime).getTime() : undefined,
+    createdAt: Date.now(), // This will be a new creation timestamp
+  };
+}
 
 export default function PlannerPage() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -29,12 +61,10 @@ export default function PlannerPage() {
   const surface = palette.background;
   const surfaceCard = palette.background;
   const textSecondary = colorScheme === 'dark' ? '#9BA1A6' : '#6B7280';
-  const normalizedWantToGo: Place[] = (mockdata_wantToGo.wantToGo as Place[]).map((p : Place) => ({
-    ...p,
-    status: p.status as PlaceStatus,
-  }));
 
-  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>(normalizedWantToGo);
+  const { state: pinState, addPin, removePin } = usePins();
+
+  const [wantToGoPlaces, setWantToGoPlaces] = useState<Place[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [placeToMove, setPlaceToMove] = useState<Place | null>(null);
@@ -42,42 +72,51 @@ export default function PlannerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isWantToGoMinimized, setIsWantToGoMinimized] = useState(false);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch both endpoints concurrently
-        const [tripsResponse] = await Promise.all([
-          fetch(TRIPS_API_URL),
-        ]);
+    const normalized = pinState.wantToGo.map(pinToPlace);
+    setWantToGoPlaces(normalized);
+  }, [pinState.wantToGo]);
 
-        if (!tripsResponse.ok) {
-          throw new Error('Network response was not ok');
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          const tripsResponse = await fetch(TRIPS_API_URL);
+
+          if (!tripsResponse.ok) {
+            throw new Error('Network response was not ok');
+          }
+
+          const tripsData = await tripsResponse.json();
+
+          const normalizedTrips: Trip[] = (tripsData as Trip[]).map((t: Trip) => ({
+            ...t,
+            places: (t.places as Place[]).map((p: Place) => ({
+              ...p,
+              status: p.status as PlaceStatus,
+            })),
+          }));
+
+          setTrips(normalizedTrips);
+
+        } catch (err) {
+          console.error("Failed to fetch data:", err);
+          setError(err instanceof Error ? err.message : 'Failed to load data');
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        // Parse the JSON data
-        const tripsData = await tripsResponse.json();
-
-        const normalizedTrips: Trip[] = (tripsData as Trip[]).map((t: Trip) => ({
-          ...t,
-          places: (t.places as Place[]).map((p: Place) => ({
-            ...p,
-            status: p.status as PlaceStatus,
-          })),
-        }));
-
-        // SET the state with the fetched data
-        setTrips(normalizedTrips);
-
-      } catch (err) {
-        console.error("Failed to fetch data:", err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+      fetchData();
+      return () => {};
+    }, []) 
+  );
+  
   // --- LOGIC ---
 
   const handleRemovePlace = (tripId: string, placeId: string) => {
@@ -94,7 +133,29 @@ export default function PlannerPage() {
     );
   };
 
-  const handleMovePlaceToWantToGo = (tripId: string, placeId: string) => {
+  // --- MODIFIED: Implements DELETE API call ---
+  const handleMovePlaceToWantToGo = async (tripId: string, placeId: string) => {
+    // --- API CALL TO DELETE PLACE FROM TRIP SCHEDULE ---
+    try {
+        const deleteUrl = `${BASE_API_URL}/places/${placeId}`;
+        console.log(`Sending DELETE request to: ${deleteUrl}`);
+        
+        const deleteResponse = await fetch(deleteUrl, { 
+            method: 'DELETE',
+            // headers: { 'Authorization': `Bearer ${userToken}` } // Add auth header if needed
+        });
+
+        if (!deleteResponse.ok) {
+            console.warn(`Server failed to delete place ${placeId}: ${deleteResponse.status}`);
+            // Continue with local update if server responds but fails to delete
+        }
+    } catch (e) {
+        console.error('Network error during DELETE:', e);
+        Alert.alert("Connection Error", "Failed to sync removal with server. The pin has been moved locally.");
+        // Continue to update local state for better UX
+    }
+    // --- END API CALL ---
+
     let placeToMoveGlobal: Place | null = null;
     setTrips((currentTrips) =>
       currentTrips.map((trip) => {
@@ -115,12 +176,14 @@ export default function PlannerPage() {
       status: 'want-to-go',
       scheduledTime: null,
     };
-      setWantToGoPlaces((currentPlaces) => [
-        unscheduledPlace,
-        ...currentPlaces,
-      ]);
+      // This updates the local UI
+      setWantToGoPlaces((currentPlaces) => [unscheduledPlace, ...currentPlaces]);
+      
+      // Convert 'Place' back to 'Pin' and add to global state
+      addPin(placeToPin(unscheduledPlace))
     }
   };
+  // --- END MODIFIED FUNCTION ---
 
   const handleMarkAsVisited = (tripId: string, placeId: string) => {
     setTrips((currentTrips) =>
@@ -161,14 +224,11 @@ export default function PlannerPage() {
 
   const router = useRouter();
 
-  // --- THIS IS THE MODIFIED FUNCTION ---
   const handleMovePlaceToTrip = (tripId: string) => {
     if (!placeToMove) return;
     const selectedTrip = trips.find((trip) => trip.id === tripId);
     if (!selectedTrip) return;
 
-    // 1. Create a more detailed prompt string.
-    // We use a template literal (backticks ``) to build a multi-line string.
     const generatedPrompt = `
 Hi! Can you please schedule the following activity?
 
@@ -178,20 +238,19 @@ Activity Details:
 - Location (Lat, Lng): ${placeToMove.location.lat}, ${placeToMove.location.lng}
 
 Please add it to my trip to: ${selectedTrip.details.destination}.
-    `.trim(); // .trim() removes any extra whitespace from the beginning or end
+    `.trim();
 
-    // 2. Remove the place from "Want to Go"
     setWantToGoPlaces((currentPlaces) =>
       currentPlaces.filter((place) => place.id !== placeToMove.id)
     );
 
-    // 3. Close the modal
+    removePin(placeToMove.id);
+
     setIsModalVisible(false);
     setPlaceToMove(null);
 
-    // 4. Navigate to the 'guide' tab and pass the new, detailed prompt
     router.push({
-      pathname: '/guide', // This is the path to guide.tsx in your (tabs) layout
+      pathname: '/guide',
       params: { autoPrompt: generatedPrompt },
     });
   };
@@ -200,134 +259,150 @@ Please add it to my trip to: ${selectedTrip.details.destination}.
     setWantToGoPlaces((currentPlaces) =>
       currentPlaces.filter((place) => place.id !== placeId)
     );
+    
+    removePin(placeId);
   };
 
   // --- END LOGIC ---
 
-  if (isLoading) {
-    return (
-      <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
-        <ActivityIndicator size="large" color={palette.tint} />
-        <ThemedText style={{ marginTop: 10 }}>Loading your plans...</ThemedText>
-      </ThemedView>
-    );
-  }
-
-  if (error) {
-    return (
-      <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
-        <ThemedText type="subtitle" style={{ color: 'red' }}>Error</ThemedText>
-        <ThemedText>{error}</ThemedText>
-        <TouchableOpacity onPress={() => {
-          setIsLoading(true);
-          setError(null);
-          // You would re-run the fetch logic here, or just refresh
-        }}>
-          <ThemedText style={{ color: palette.tint, marginTop: 15 }}>Try again</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-    );
-  }
-
   return (
     <ThemedView style={[styles.pageContainer, { backgroundColor: palette.background }]}>
-      {/* --- Modal (Unchanged) --- */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isModalVisible}
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setIsModalVisible(false)}
-        >
-          <Pressable style={[styles.modalContainer, { backgroundColor: surfaceCard, borderColor: borderNeutral }]} onPress={() => {}}>
-            <ThemedText type="subtitle" style={[styles.modalTitle, { color: palette.text } ]}>Add to a Trip</ThemedText>
-            <ThemedText style={[styles.modalSubtitle, { color: textSecondary }]}>
-              Which trip do you want to add "{placeToMove?.name}" to?
-            </ThemedText>
-            <View style={styles.tripListContainer}>
-              {trips.map((trip) => (
-                <TouchableOpacity
-                  key={trip.id}
-                  style={[styles.tripSelectItem, { backgroundColor: surface, borderColor: borderNeutral }]}
-                  onPress={() => handleMovePlaceToTrip(trip.id)}
-                >
-                  <ThemedText style={[styles.tripSelectItemText, { color: palette.text }]}>
-                    {trip.details.destination}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={[styles.modalButtonCancel, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#E5E5EA' }]}
+      
+      {/* Handle Loading and Error States */}
+      {isLoading ? (
+        <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
+          <ActivityIndicator size="large" color={palette.tint} />
+          <ThemedText style={{ marginTop: 10 }}>Loading your plans...</ThemedText>
+        </ThemedView>
+      ) : error ? (
+        <ThemedView style={[styles.pageContainer, styles.centeredContainer,{backgroundColor:palette.background}]}>
+          <ThemedText type="subtitle" style={{ color: 'red' }}>Error</ThemedText>
+          <ThemedText>{error}</ThemedText>
+          <TouchableOpacity onPress={() => {
+            // Manually trigger a refetch by resetting state
+            setIsLoading(true);
+            setError(null);
+          }}>
+            <ThemedText style={{ color: palette.tint, marginTop: 15 }}>Try again</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
+      ) : (
+        <>
+          {/* --- Modal --- */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={isModalVisible}
+            onRequestClose={() => setIsModalVisible(false)}
+          >
+            <Pressable
+              style={styles.modalBackdrop}
               onPress={() => setIsModalVisible(false)}
             >
-              <ThemedText style={[styles.modalButtonCancelText, { color: palette.text }]}>Cancel</ThemedText>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-      {/* --- END MODAL --- */}
+              <Pressable style={[styles.modalContainer, { backgroundColor: surfaceCard, borderColor: borderNeutral }]} onPress={() => {}}>
+                <ThemedText type="subtitle" style={[styles.modalTitle, { color: palette.text } ]}>Add to a Trip</ThemedText>
+                <ThemedText style={[styles.modalSubtitle, { color: textSecondary }]}>
+                  Which trip do you want to add "{placeToMove?.name}" to?
+                </ThemedText>
+                <View style={styles.tripListContainer}>
+                  {trips.map((trip) => (
+                    <TouchableOpacity
+                      key={trip.id}
+                      style={[styles.tripSelectItem, { backgroundColor: surface, borderColor: borderNeutral }]}
+                      onPress={() => handleMovePlaceToTrip(trip.id)}
+                    >
+                      <ThemedText style={[styles.tripSelectItemText, { color: palette.text }]}>
+                        {trip.details.destination}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={[styles.modalButtonCancel, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#E5E5EA' }]}
+                  onPress={() => setIsModalVisible(false)}
+                >
+                  <ThemedText style={[styles.modalButtonCancelText, { color: palette.text }]}>Cancel</ThemedText>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+          {/* --- END MODAL --- */}
 
-      <ThemedView style={[styles.header, { borderColor: borderNeutral, backgroundColor: surfaceCard }]}>
-        <ThemedText type="title" style={[styles.headerTitle, { color: palette.text }]}>Your Trips</ThemedText>
-      </ThemedView>
+          <ThemedView style={[styles.header, { borderColor: borderNeutral, backgroundColor: surfaceCard }]}>
+            <ThemedText type="title" style={[styles.headerTitle, { color: palette.text }]}>Your Trips</ThemedText>
+          </ThemedView>
 
-      <ScrollView
-        style={styles.scrollContainer}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* --- Global "Want to Go" Section --- */}
-        <ThemedView style={[styles.globalWantToGoSection, { borderColor: borderNeutral, backgroundColor: surfaceCard }] }>
-          <View style={styles.sectionHeader}>
-            <MapPin size={20} color={palette.tint} style={styles.sectionIcon} />
-            <ThemedText style={[styles.sectionTitle, { color: palette.text }]}>Want to Go</ThemedText>
-          </View>
-          {wantToGoPlaces.length > 0 ? (
-            wantToGoPlaces.map((place) => (
-              <PlaceCard
-                key={place.id}
-                place={place}
-                onRemove={() => handleRemoveWantToGoPlace(place.id)}
-                onSchedule={() => handleOpenMoveModal(place)}
-                onUnschedule={() => {}} // Not applicable
-                onMarkAsVisited={() => {}} // Not applicable
-                onUndoVisit={() => {}} // --- NEW ---
-              />
-            ))
-          ) : (
-            <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
-              Your "Want to Go" list is empty.
-            </ThemedText>
-          )}
-        </ThemedView>
+          <ScrollView
+            style={styles.scrollContainer}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* --- Global "Want to Go" Section --- */}
+            <ThemedView style={[styles.globalWantToGoSection, { borderColor: borderNeutral, backgroundColor: surfaceCard }] }>
+              
+              <Pressable
+                style={styles.collapsibleSectionHeader}
+                onPress={() => setIsWantToGoMinimized(!isWantToGoMinimized)}
+              >
+                <View style={styles.sectionHeaderLeft}>
+                  <MapPin size={20} color={palette.tint} style={styles.sectionIcon} />
+                  <ThemedText style={[styles.sectionTitle, { color: palette.text }]}>Want to Go</ThemedText>
+                </View>
+                {isWantToGoMinimized ? (
+                  <ChevronDown size={24} color={textSecondary} />
+                ) : (
+                  <ChevronUp size={24} color={textSecondary} />
+                )}
+              </Pressable>
 
-        {/* --- Trips Section --- */}
-        {trips.length > 0 ? (
-          trips.map((trip) => (
-            <TripItinerary
-              key={trip.id}
-              trip={trip}
-              onRemovePlace={(placeId) => handleRemovePlace(trip.id, placeId)}
-              onUnschedulePlace={(placeId) =>
-                handleMovePlaceToWantToGo(trip.id, placeId)
-              }
-              onMarkPlaceAsVisited={(placeId) =>
-                handleMarkAsVisited(trip.id, placeId)
-              }
-              onUndoPlaceVisit={(placeId) =>
-                handleUndoVisit(trip.id, placeId)
-              }
-            />
-          ))
-        ) : (
-          <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
-            You have no trips planned.
-          </ThemedText>
-        )}
-      </ScrollView>
+              {!isWantToGoMinimized && (
+                <View style={styles.wantToGoContent}>
+                  {wantToGoPlaces.length > 0 ? (
+                    wantToGoPlaces.map((place) => (
+                      <PlaceCard
+                        key={place.id}
+                        place={place}
+                        onRemove={() => handleRemoveWantToGoPlace(place.id)}
+                        onSchedule={() => handleOpenMoveModal(place)}
+                        onUnschedule={() => {}}
+                        onMarkAsVisited={() => {}}
+                        onUndoVisit={() => {}}
+                      />
+                    ))
+                  ) : (
+                    <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
+                      Your "Want to Go" list is empty.
+                    </ThemedText>
+                  )}
+                </View>
+              )}
+            </ThemedView>
+            
+            {/* --- Trips Section --- */}
+            {trips.length > 0 ? (
+              trips.map((trip) => (
+                <TripItinerary
+                  key={trip.id}
+                  trip={trip}
+                  onRemovePlace={(placeId) => handleRemovePlace(trip.id, placeId)}
+                  onUnschedulePlace={(placeId) =>
+                    handleMovePlaceToWantToGo(trip.id, placeId)
+                  }
+                  onMarkPlaceAsVisited={(placeId) =>
+                    handleMarkAsVisited(trip.id, placeId)
+                  }
+                  onUndoPlaceVisit={(placeId) =>
+                    handleUndoVisit(trip.id, placeId)
+                  }
+                />
+              ))
+            ) : (
+              <ThemedText style={[styles.emptyTripsText, { color: textSecondary }]}>
+                You have no trips planned.
+              </ThemedText>
+            )}
+          </ScrollView>
+        </>
+      )}
     </ThemedView>
   );
 }
@@ -370,15 +445,23 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
     padding: 16,
-    gap: 12,
   },
-  sectionHeader: {
+  collapsibleSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionIcon: {
     marginRight: 8,
+  },
+  wantToGoContent: {
+    paddingTop: 12, 
+    gap: 12, 
   },
   sectionTitle: {
     fontSize: 18,

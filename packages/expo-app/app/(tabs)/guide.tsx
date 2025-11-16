@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions, Text } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions, Text, Modal, TouchableOpacity } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import ChatWindow from '@/components/chat/ChatWindow';
 import StartingChat from '@/components/chat/StartingChat';
@@ -20,6 +20,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '@/state/auth';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -53,6 +54,8 @@ export default function GuideScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ autoPrompt?: string }>();
   const router = useRouter();
+  const { token, logout, username } = useAuth();
+  const [isUserMenuVisible, setUserMenuVisible] = useState(false);
   const MIN_SCALE = 0.9;
   const MAX_SCALE = 4;
   const baseScale = useSharedValue(1);
@@ -61,6 +64,16 @@ export default function GuideScreen() {
   const translateY = useSharedValue(0);
   const offsetX = useSharedValue(0);
   const offsetY = useSharedValue(0);
+  const handleLogout = () => {
+    logout(); // Clears token and removes from storage
+    setUserMenuVisible(false); // Close the modal
+    setMessages([]); // Clear chat UI
+    setCurrentSessionId(undefined); // Clear session
+    // The router.replace('/login') is handled inside the logout() hook
+  };
+  const handleGoToLogin = () => {
+    router.replace('/login'); 
+  };
   const clamp = (v: number, min: number, max: number) => {
     'worklet';
     return Math.max(min, Math.min(max, v));
@@ -240,20 +253,30 @@ export default function GuideScreen() {
     if (!content && !attachmentUri) return;
     const userMsg: ChatMessage = { id: String(Date.now()), role: 'user', type: 'text', text: content || undefined, imageUri: attachmentUri, ts: Date.now() };
     setMessages((prev) => [userMsg, ...prev]);
-    if (!currentSessionId) {
-      const sid = createSession(userMsg);
-      setCurrentSessionId(sid);
-      trySyncSession(sid);
+    let activeId = currentSessionId;
+    if (!activeId) {
+      const localId = createSession(userMsg);
+      activeId = localId;
+      setCurrentSessionId(localId);
+      trySyncSession(localId);
     } else {
-      appendMessage(currentSessionId, userMsg);
-      trySyncSession(currentSessionId);
+      appendMessage(activeId, userMsg);
+      trySyncSession(activeId);
     }
+    const pendingAttachment = attachmentUri;
     setCurrentInput('');
     setAttachmentUri(undefined);
     setIsLoading(true);
     try {
-      const reply = await sendChat(content || '', messages);
+      const reply = await sendChat(content || '', pendingAttachment, activeId);
       let botMsg: ChatMessage;
+      const cleanupValue = (v: any): string | undefined => {
+        if (v === undefined || v === null) return undefined;
+        const s = typeof v === 'string' ? v.trim() : String(v).trim();
+        if (!s) return undefined;
+        if (/^(unknown|n\/a|na|none|not available|unspecified|tbd|-|no data|no info|not found|no info available|not provided|not specified)$/i.test(s)) return undefined;
+        return s;
+      };
       if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
         const first = reply[0] as any;
         const remoteId = first.sessionId ? String(first.sessionId) : undefined;
@@ -266,9 +289,13 @@ export default function GuideScreen() {
           suggestions: [],
           ts: Date.now() + 1,
         };
+        appendMessage(activeId, botMsg);
         if (remoteId) {
-          if (currentSessionId) adoptSessionId(currentSessionId, remoteId);
+          adoptSessionId(activeId, remoteId);
           setCurrentSessionId(remoteId);
+          trySyncSession(remoteId);
+        } else {
+          trySyncSession(activeId);
         }
       } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
         const items = reply.map((r: any) => {
@@ -280,13 +307,13 @@ export default function GuideScreen() {
             }
           } catch {}
           return {
-            landmarkName: String(r.landmarkName ?? ''),
-            publicAccess: r.publicAccess ? String(r.publicAccess) : undefined,
+            landmarkName: cleanupValue(r.landmarkName) ?? 'Location',
+            publicAccess: cleanupValue(r.publicAccess),
             coords: coordsObj,
-            about: r.about ? String(r.about) : undefined,
-            openingHours: r.openingHours ? String(r.openingHours) : undefined,
-            ticketPrices: r.ticketPrices ? String(r.ticketPrices) : undefined,
-            website: r.website ? String(r.website) : undefined,
+            about: cleanupValue(r.about),
+            openingHours: cleanupValue(r.openingHours),
+            ticketPrices: cleanupValue(r.ticketPrices),
+            website: cleanupValue(r.website),
             id: r.id,
             createdAt: r.createdAt,
             updatedAt: r.updatedAt,
@@ -300,20 +327,23 @@ export default function GuideScreen() {
           suggestions: ['Open in Map', 'More details'],
           ts: Date.now() + 1,
         };
+        appendMessage(activeId, botMsg);
+        trySyncSession(activeId);
       } else {
          throw new Error('Invalid JSON response from server');
       }
       setMessages((prev) => [botMsg, ...prev]);
-      if (currentSessionId) {
-        appendMessage(currentSessionId, botMsg);
-        trySyncSession(currentSessionId);
-      }
     } catch {
       const errMsg: ChatMessage = { id: String(Date.now() + 2), role: 'bot', type: 'text', text: `I'm sorry, I'm having trouble connecting. Please try again in a moment.`, ts: Date.now() + 2 };
       setMessages((prev) => [errMsg, ...prev]);
       if (currentSessionId) {
         appendMessage(currentSessionId, errMsg);
         trySyncSession(currentSessionId);
+      } else {
+        const localId = createSession(userMsg);
+        appendMessage(localId, errMsg);
+        setCurrentSessionId(localId);
+        trySyncSession(localId);
       }
     } finally {
       setIsLoading(false);
@@ -371,10 +401,29 @@ export default function GuideScreen() {
       {currentSessionId && !isSidebarOpen ? (
         <View style={{ position: 'absolute', top: insets.top + 16, left: insets.left + 0, right: insets.right + 0, alignItems: 'center', zIndex: 900 }}>
           <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderWidth: 1, borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }}>
-            <Text style={{ color: Colors[colorScheme ?? 'light'].text, fontSize: 16, fontWeight: '600' }}>{getSession(currentSessionId)?.title ?? ''}</Text>
+            <Text style={{ color: Colors[colorScheme ?? 'light'].text, fontSize: 16, fontWeight: '600', maxWidth: "60%" }} numberOfLines={1} ellipsizeMode="tail">{getSession(currentSessionId)?.title ?? ''}</Text>
           </View>
         </View>
       ) : null}
+      <View style={{ position: 'absolute', top: insets.top + 16, right: insets.right + 20, zIndex: 1000 }}>
+        {token ? (
+          // USER BUTTON (Logged In)
+          <Pressable
+            onPress={() => setUserMenuVisible(true)} // Open the pop-up
+            style={[styles.headerButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+          >
+            <Ionicons name="person-circle-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
+          </Pressable>
+        ) : (
+          // LOGIN BUTTON (Logged Out)
+          <Pressable
+            onPress={handleGoToLogin}
+            style={[styles.headerButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+          >
+            <Ionicons name="log-in" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
+          </Pressable>
+        )}
+      </View>
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -448,10 +497,102 @@ export default function GuideScreen() {
           </View>
         </GestureHandlerRootView>
       ) : null}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isUserMenuVisible}
+        onRequestClose={() => setUserMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setUserMenuVisible(false)}
+        >
+          <View 
+            style={[styles.modalContainer, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFF', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+            // This prevents the backdrop press from firing
+            onStartShouldSetResponder={() => true} 
+          >
+            <View style={styles.usernameContainer}>
+              <Text style={styles.usernameText} numberOfLines={1}>
+                {username || '...'}
+              </Text>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]} />
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.modalButtonTextLogout}>Log Out</Text>
+            </TouchableOpacity>
+            
+            <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]} />
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setUserMenuVisible(false)}
+            >
+              <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    maxWidth: 300,
+    backgroundColor: 'white',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  modalButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalButtonTextLogout: {
+    color: '#FF3B30', // Red color for logout
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalButtonTextCancel: {
+    color: '#007AFF', // Blue color for cancel
+    fontSize: 17,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
+  usernameContainer: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  usernameText: {
+    fontSize: 13,
+    color: '#8E8E93', // A muted gray color
+    fontWeight: '500',
+  },
 });
