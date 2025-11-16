@@ -1,0 +1,72 @@
+[
+  {
+    "ID": "daf9ed3e-9ada-48be-a546-d784638db25d",
+    "NAME": "Timisoara Jazz Evening #1",
+    "DESCRIPTION": "An engaging event where attendees can enjoy timisoara jazz evening #1.",
+    "LOCATION": {"lat": 45.72206512538785, "lng": 21.223243150021304},
+    "SCHEDULED_TIME": "2025-10-21 07:12:41"
+  },
+  {
+    "ID": "3fd04dad-d7df-43d0-b8aa-a86b4c72a447",
+    "NAME": "Bega Riverside Picnic #1",
+    "DESCRIPTION": "An engaging event where attendees can enjoy bega riverside picnic #1.",
+    "LOCATION": {"lat": 45.7548063513877, "lng": 21.204082060104714},
+    "SCHEDULED_TIME": "2026-03-27 01:23:25"
+  },
+  {
+    "ID": "5a81e5e2-32db-4dda-9694-1ae395d0cabf",
+    "NAME": "Union Square Food Fest #1",
+    "DESCRIPTION": "A popular gathering featuring activities related to union square food fest #1.",
+    "LOCATION": {"lat": 45.75030541258006, "lng": 21.235395879897762},
+    "SCHEDULED_TIME": "2025-08-07 03:27:04"
+  },
+  {
+    "ID": "2b839447-2acc-4149-bbc6-3c09f2175b58",
+    "NAME": "Tech Innovators Meetup #1",
+    "DESCRIPTION": "An exciting occasion offering workshops, demonstrations, and tech innovators meetup #1.",
+    "LOCATION": {"lat": 45.726629918396945, "lng": 21.23918360768063},
+    "SCHEDULED_TIME": "2025-08-14 18:02:28"
+  },
+  {
+    "ID": "d0b17315-8443-4fd5-97e3-454ea8c20075",
+    "NAME": "Botanical Garden Walk #1",
+    "DESCRIPTION": "A cultural highlight in Timisoara centered around botanical garden walk #1.",
+    "LOCATION": {"lat": 45.758417329964765, "lng": 21.211020065832574},
+    "SCHEDULED_TIME": "2026-02-08 17:44:38"
+  },
+  {
+    "ID": "53c73c69-f535-46e1-b139-b948bbcb4041",
+    "NAME": "Artisans' Craft Fair #1",
+    "DESCRIPTION": "An exciting occasion offering workshops, demonstrations, and artisans' craft fair #1.",
+    "LOCATION": {"lat": 45.734337333165406, "lng": 21.20158178467914},
+    "SCHEDULED_TIME": "2025-07-03 13:16:07"
+  },
+  {
+    "ID": "f92c4c76-c453-4d7b-89b2-85f6a8de0618",
+    "NAME": "Roses Park Open-Air Concert #1",
+    "DESCRIPTION": "An exciting occasion offering workshops, demonstrations, and roses park open-air concert #1.",
+    "LOCATION": {"lat": 45.72637700782385, "lng": 21.21857886473522},
+    "SCHEDULED_TIME": "2025-03-22 12:25:29"
+  },
+  {
+    "ID": "be983159-393f-48cf-927f-03b93429e3b5",
+    "NAME": "Timisoara Startup Night #1",
+    "DESCRIPTION": "An exciting occasion offering workshops, demonstrations, and timisoara startup night #1.",
+    "LOCATION": {"lat": 45.75577621355541, "lng": 21.2195401771659},
+    "SCHEDULED_TIME": "2025-07-25 04:50:54"
+  },
+  {
+    "ID": "0b7de04f-bf44-490c-b9d8-3964649befec",
+    "NAME": "Opera Gala Performance #1",
+    "DESCRIPTION": "An exciting occasion offering workshops, demonstrations, and opera gala performance #1.",
+    "LOCATION": {"lat": 45.730879631181516, "lng": 21.20919902593056},
+    "SCHEDULED_TIME": "2026-01-05 13:01:53"
+  },
+  {
+    "ID": "910b0cf6-825d-4ca5-9c0d-ff1c74fd94a7",
+    "NAME": "Fabrica de Bere Tour #1",
+    "DESCRIPTION": "A community event celebrating fabrica de bere tour #1 with locals and visitors.",
+    "LOCATION": {"lat": 45.74049087811367, "lng": 21.229834815942425},
+    "SCHEDULED_TIME": "2025-01-26 02:08:12"
+  }
+]

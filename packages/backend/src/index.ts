@@ -130,6 +130,39 @@ function buildApp() {
     reply.send({ status: "success" });
   });
 
+  app.get('/events', async (request, reply) => {
+    const eventsResult = await app.db.query(
+      `select ID, NAME, DESCRIPTION, LOCATION, SCHEDULED_TIME from PROD.PUBLIC.EVENTS`
+    );
+
+    reply.send(
+      eventsResult.data.map((r) => ({
+        id: r[0],
+        name: r[1],
+        description: r[2],
+        location: JSON.parse(r[3]),
+        scheduledTime: new Date(parseFloat(r[4]) * 1000).toISOString(),
+      }))
+    );
+  });
+
+  app.post('/events', async (request, reply) => {
+    const event = request.body as any;
+
+    await app.db.query(
+      "insert into PROD.PUBLIC.EVENTS (ID, NAME, DESCRIPTION, LOCATION, SCHEDULED_TIME) select ?, ?, ?, parse_json(?), ?",
+      [
+        crypto.randomUUID(),
+        event.name,
+        event.description,
+        JSON.stringify(event.location),
+        event.scheduledTime,
+      ]
+    );
+
+    reply.send({ status: "success" });
+  });
+
   app.post("/trips", async (request, reply) => {
     const trip = (request.body as any).itineraryData;
     const userId = (request.body as any).userId;
