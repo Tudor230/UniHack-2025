@@ -4,14 +4,17 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  Button,
   View,
   Alert,
   TouchableOpacity,
   ActivityIndicator, // 1. Import ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/state/auth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 // 2. DEFINE YOUR API ENDPOINT
 const LOGIN_API_ENDPOINT = 'https://your-api.com/login'; // <-- REPLACE THIS
@@ -22,6 +25,17 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false); // 3. Add loading state
   const router = useRouter();
   const { login } = useAuth();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+
+  const handleBackOrMain = () => {
+    const canGoBack = typeof (router as any).canGoBack === 'function' ? (router as any).canGoBack() : false;
+    if (canGoBack) {
+      router.back();
+    } else {
+      router.replace('/guide');
+    }
+  };
 
   /**
    * Handles the login button press.
@@ -88,34 +102,39 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <View style={styles.container}>
-        <Text style={styles.title}>Login</Text>
+        <View style={{ position: 'absolute', top: insets.top + 10, left: 20, zIndex: 1000 }}>
+          <TouchableOpacity onPress={handleBackOrMain} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={22} color={Colors[colorScheme ?? 'light'].tint} />
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Login</Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Email"
           onChangeText={setEmail}
           value={email}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading} // Disable input while loading
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Password"
           onChangeText={setPassword}
           value={password}
           secureTextEntry={true}
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading} // Disable input while loading
         />
 
         {/* 12. Modify Login Button to show loading state */}
         <TouchableOpacity 
-          style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
+          style={[styles.loginButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }, isLoading && styles.loginButtonDisabled]} 
           onPress={handleLogin}
           disabled={isLoading} // Disable button while loading
         >
@@ -127,22 +146,17 @@ export default function App() {
         </TouchableOpacity>
 
         <View style={styles.signUpButtonContainer}>
-          <Button
-            title="Don't have an account? Sign Up"
+          <TouchableOpacity
+            style={styles.transparentButton}
             onPress={handleSignUpNavigation}
-            color="#007AFF"
-            disabled={isLoading} // Disable button while loading
-          />
+            disabled={isLoading}
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.signUpText, { color: Colors[colorScheme ?? 'light'].tint }]}>Don't have an account? Sign Up</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.signUpButtonContainer}>
-          <Button
-            title="Go to Main Page"
-            onPress={handleGoToMain}
-            color="#888" // A different color
-            disabled={isLoading}
-          />
-        </View>
+        
 
      </View>
     </SafeAreaView>
@@ -192,7 +206,24 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   loginButtonDisabled: {
-    backgroundColor: '#007AFF',
     opacity: 0.7, // Make it look disabled
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transparentButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signUpText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

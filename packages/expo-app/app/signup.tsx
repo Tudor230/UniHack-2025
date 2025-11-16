@@ -7,10 +7,13 @@ import {
   View,
   Alert,
   TouchableOpacity,
-  Button, // 1. Import Button
   ActivityIndicator, // 2. Import ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router'; // 3. Import useRouter
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 // 4. DEFINE YOUR API ENDPOINT
 const SIGNUP_API_ENDPOINT = 'https://your-api.com/signup'; // <-- REPLACE THIS
@@ -23,6 +26,8 @@ export default function App() {
   const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false); // 5. Add loading state
   const router = useRouter(); // 6. Get the router instance
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
 
   /**
    * Handles the sign-up button press.
@@ -87,64 +92,79 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
       <View style={styles.container}>
-        <Text style={styles.title}>Sign Up</Text>
+        <View style={{ position: 'absolute', top: insets.top + 10, left: 20, zIndex: 1000 }}>
+          <TouchableOpacity
+            onPress={() => {
+              const canGoBack = typeof (router as any).canGoBack === 'function' ? (router as any).canGoBack() : false;
+              if (canGoBack) {
+                router.back();
+              } else {
+                router.replace('/guide');
+              }
+            }}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors[colorScheme ?? 'light'].tint} />
+          </TouchableOpacity>
+        </View>
+        <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Sign Up</Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Full Name"
           onChangeText={setFullName}
           value={fullName}
           autoCapitalize="words"
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading}
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Username"
           onChangeText={setUsername}
           value={username}
           autoCapitalize="none"
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading}
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Email"
           onChangeText={setEmail}
           value={email}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading}
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Password"
           onChangeText={setPassword}
           value={password}
           secureTextEntry={true}
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading}
         />
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: Colors[colorScheme ?? 'light'].background, borderColor: Colors[colorScheme ?? 'light'].icon, color: Colors[colorScheme ?? 'light'].text }]}
           placeholder="Confirm Password"
           onChangeText={setConfirmPassword}
           value={confirmPassword}
           secureTextEntry={true}
-          placeholderTextColor="#888"
+          placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
           editable={!isLoading}
         />
 
         {/* 15. Modify Sign Up Button for loading state */}
         <TouchableOpacity 
-          style={[styles.signUpButton, isLoading && styles.signUpButtonDisabled]} 
+          style={[styles.signUpButton, { backgroundColor: Colors[colorScheme ?? 'light'].tint }, isLoading && styles.signUpButtonDisabled]} 
           onPress={handleSignUp}
           disabled={isLoading}
         >
@@ -155,14 +175,15 @@ export default function App() {
           )}
         </TouchableOpacity>
 
-        {/* 16. Add "Go to Login" button */}
         <View style={styles.loginButtonContainer}>
-          <Button
-            title="Already have an account? Log In"
+          <TouchableOpacity
+            style={styles.transparentButton}
             onPress={handleGoToLogin}
-            color="#007AFF"
             disabled={isLoading}
-          />
+            activeOpacity={0.6}
+          >
+            <Text style={[styles.loginLinkText, { color: Colors[colorScheme ?? 'light'].tint }]}>Already have an account? Log In</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -204,7 +225,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   signUpButtonDisabled: {
-    backgroundColor: '#007AFF',
     opacity: 0.7,
   },
   signUpButtonText:{
@@ -214,5 +234,23 @@ const styles = StyleSheet.create({
   },
   loginButtonContainer: {
     marginTop: 10,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transparentButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginLinkText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
