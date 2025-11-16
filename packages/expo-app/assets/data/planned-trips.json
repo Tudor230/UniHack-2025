@@ -1,22 +1,4 @@
 {
-  "wantToGo": [
-    {
-      "id": "uuid-1",
-      "name": "Eiffel Tower",
-      "location": { "lat": 48.8584, "lng": 2.2945 },
-      "status": "want-to-go",
-      "scheduledTime": null,
-      "type": "activity"
-    },
-    {
-      "id": "uuid-4",
-      "name": "Shinjuku Gyoen",
-      "location": { "lat": 35.685, "lng": 139.710 },
-      "status": "want-to-go",
-      "scheduledTime": null,
-      "type": "activity"
-    }
-  ],
     "trips": [{
       "id": "trip-uuid-1",
       "details": {

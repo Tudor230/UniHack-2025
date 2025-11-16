@@ -19,6 +19,7 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -50,6 +51,8 @@ export default function GuideScreen() {
   const colorScheme = useColorScheme();
   const screen = Dimensions.get('window');
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ autoPrompt?: string }>();
+  const router = useRouter();
   const MIN_SCALE = 0.9;
   const MAX_SCALE = 4;
   const baseScale = useSharedValue(1);
@@ -220,6 +223,17 @@ export default function GuideScreen() {
       }
     };
   }, [scan, poi, recognizing]);
+
+  useEffect(() => {
+    // Check if the 'autoPrompt' parameter exists
+    if (params.autoPrompt) {
+      // If it exists, send the prompt to the chat
+      onSend(params.autoPrompt);
+      
+      // Clear the parameter so it doesn't run again on tab switch
+      router.setParams({ autoPrompt: undefined });
+    }
+  }, [params.autoPrompt]);
 
   const onSend = async (text?: string) => {
     const content = (text ?? currentInput).trim();
