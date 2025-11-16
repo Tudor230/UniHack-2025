@@ -45,8 +45,8 @@ function buildApp() {
             id: r[0],
             details: {
               destination: r[1],
-              startDate: new Date(parseFloat(r[2]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0],
-              endDate: new Date(parseFloat(r[3]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0],
+              startDate: r[2] ? new Date(parseFloat(r[2]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0] : null,
+              endDate: r[3] ? new Date(parseFloat(r[3]) * 1000 * 60 * 60 * 24).toISOString().split("T")[0] : null,
             },
             places: placesResult.data.map((pr) => ({
               id: pr[0],
@@ -100,6 +100,45 @@ function buildApp() {
     for (const place of trip.places) {
       await app.db.query(
         "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
+        [
+          crypto.randomUUID(),
+          place.name,
+          JSON.stringify(place.location),
+          place.status,
+          place.scheduledTime,
+          place.type,
+          tripId,
+        ]
+      );
+    }
+
+    for (const [date, times] of Object.entries(trip.dailyTravelTimes)) {
+      await app.db.query(
+        "insert into PROD.PUBLIC.DAILY_TRAVEL_TIMES (ID, DATE, TIMES, TRIP_ID) select ?, ?, parse_json(?), ?",
+        [crypto.randomUUID(), date, JSON.stringify(times), tripId]
+      );
+    }
+
+    reply.send({ status: "success" });
+  });
+
+  app.put("/trips/:tripId", async (request, reply) => {
+    const tripId = (request.params as any).tripId;
+    const trip = (request.body as any).itineraryData;
+
+    await app.db.query(
+      "update PROD.PUBLIC.TRIPS set DESTINATION = ?, START_DATE = ?, END_DATE = ? where ID = ?",
+      [
+        trip.details.destination,
+        trip.details.startDate,
+        trip.details.endDate,
+        tripId,
+      ]
+    );
+
+    for (const place of trip.places) {
+      await app.db.query(
+        "update PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
         [
           crypto.randomUUID(),
           place.name,
