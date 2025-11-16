@@ -26,7 +26,7 @@ export function PlaceCard({
   onUndoVisit,
 }: PlaceCardProps) {
   const isScheduled = place.status === 'scheduled';
-  const isVisited = place.status === 'visited';
+  const isVisited = place.visited;
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const borderNeutral = colorScheme === 'dark' ? '#38383A' : '#E5E5EA';
