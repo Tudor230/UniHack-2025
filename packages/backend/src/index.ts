@@ -75,7 +75,7 @@ function buildApp() {
       await Promise.all(
         tripsResult.data.map(async (r) => {
           const placesResult = await app.db.query(
-            `select ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE from PROD.PUBLIC.PLACES where TRIP_ID = ?`,
+            `select ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, VISITED from PROD.PUBLIC.PLACES where TRIP_ID = ?`,
             [r[0]]
           );
           const dailyTimesResult = await app.db.query(
@@ -105,6 +105,7 @@ function buildApp() {
               status: pr[3],
               scheduledTime: new Date(parseFloat(pr[4]) * 1000).toISOString(),
               type: pr[5],
+              visited: Boolean(pr[6]),
             })),
             dailyTravelTimes: Object.fromEntries(
               dailyTimesResult.data.map((dr) => [
@@ -126,6 +127,17 @@ function buildApp() {
     await app.db.query("delete from PROD.PUBLIC.PLACES where ID = ?", [
       placeId,
     ]);
+
+    reply.send({ status: "success" });
+  });
+
+  app.put("/places/:placeId/visited", async (request, reply) => {
+    const placeId = (request.params as any).placeId;
+
+    await app.db.query(
+      "update PROD.PUBLIC.PLACES set VISITED = 'true' where ID = ?",
+      [placeId]
+    );
 
     reply.send({ status: "success" });
   });
@@ -182,7 +194,7 @@ function buildApp() {
 
     for (const place of trip.places) {
       await app.db.query(
-        "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
+        "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, VISITED, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?, ?",
         [
           crypto.randomUUID(),
           place.name,
@@ -190,6 +202,7 @@ function buildApp() {
           place.status,
           place.scheduledTime,
           place.type,
+          place.visited ? 'true' : 'false',
           tripId,
         ]
       );
@@ -224,7 +237,7 @@ function buildApp() {
 
     for (const place of trip.places) {
       await app.db.query(
-        "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
+        "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, VISITED, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?, ?",
         [
           crypto.randomUUID(),
           place.name,
@@ -232,6 +245,7 @@ function buildApp() {
           place.status,
           place.scheduledTime,
           place.type,
+          place.visited ? 'true' : 'false',
           tripId,
         ]
       );
@@ -243,6 +257,23 @@ function buildApp() {
         [crypto.randomUUID(), date, JSON.stringify(times), tripId]
       );
     }
+
+    reply.send({ status: "success" });
+  });
+
+  app.delete("/trips/:tripId", async (request, reply) => {
+    const tripId = (request.params as any).tripId;
+
+    await app.db.query("delete from PROD.PUBLIC.PLACES where TRIP_ID = ?", [
+      tripId,
+    ]);
+    await app.db.query("delete from PROD.PUBLIC.DAILY_TRAVEL_TIMES where TRIP_ID = ?", [
+      tripId,
+    ]);
+
+    await app.db.query("delete from PROD.PUBLIC.TRIPS where ID = ?", [
+      tripId,
+    ]);
 
     reply.send({ status: "success" });
   });
