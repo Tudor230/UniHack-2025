@@ -17,10 +17,14 @@ export async function sendChat(query: string, attachmentUri?: string, sessionId?
     })();
     const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
     form.append('image', { uri: attachmentUri, name: `image.${ext}`, type: mime } as any);
+    try { console.log('Chat API request (attachment)', { endpoint, userId, coords, sessionId }); } catch {}
     const res = await fetch(endpoint, { method: 'POST', body: form });
     if (!res.ok) throw new Error('Chat API failed');
-    return res.json();
+    const json = await res.json();
+    console.log('Chat API response:', json);
+    return json;
   } else {
+    try { console.log('Chat API request (text)', { endpoint, userId, query, sessionId, location }); } catch {}
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -32,7 +36,9 @@ export async function sendChat(query: string, attachmentUri?: string, sessionId?
       }),
     });
     if (!res.ok) throw new Error('Chat API failed');
-    return res.json();
+    const json = await res.json();
+    console.log('Chat API response:', json);
+    return json;
   }
 }
 

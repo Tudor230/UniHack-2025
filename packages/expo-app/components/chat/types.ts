@@ -15,7 +15,7 @@ export type ChatCard = {
 export type MapItem = {
   landmarkName: string;
   publicAccess?: string;
-  coords?: { latitude: number; longitude: number };
+  coords?: { lat: number; long: number };
   about?: string;
   openingHours?: string;
   ticketPrices?: string;

@@ -21,6 +21,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@/state/auth';
+import { normalizeCoords } from '@/utils/coords';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -48,7 +49,7 @@ export default function GuideScreen() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | undefined>();
   const { scan, poi } = useUiBus();
-  const { createSession, appendMessage, trySyncSession, loadSession, getSession, adoptSessionId } = useChatHistory();
+  const { createSession, appendMessage, trySyncSession, loadSession, getSession, adoptSessionId, overrideMapItemCoords } = useChatHistory();
   const colorScheme = useColorScheme();
   const screen = Dimensions.get('window');
   const insets = useSafeAreaInsets();
@@ -248,6 +249,8 @@ export default function GuideScreen() {
     }
   }, [params.autoPrompt]);
 
+  
+
   const onSend = async (text?: string) => {
     const content = (text ?? currentInput).trim();
     if (!content && !attachmentUri) return;
@@ -269,6 +272,7 @@ export default function GuideScreen() {
     setIsLoading(true);
     try {
       const reply = await sendChat(content || '', pendingAttachment, activeId);
+      console.log(reply)
       let botMsg: ChatMessage;
       const cleanupValue = (v: any): string | undefined => {
         if (v === undefined || v === null) return undefined;
@@ -277,7 +281,71 @@ export default function GuideScreen() {
         if (/^(unknown|n\/a|na|none|not available|unspecified|tbd|-|no data|no info|not found|no info available|not provided|not specified)$/i.test(s)) return undefined;
         return s;
       };
-      if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
+      if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
+        const items = reply.map((r: any) => {
+          console.log(r.coords);
+          const coordsObj = normalizeCoords(r?.coords ?? r);
+          return {
+            landmarkName: cleanupValue(r.landmarkName) ?? 'Location',
+            publicAccess: cleanupValue(r.publicAccess),
+            coords: JSON.parse(r.coords),
+            about: cleanupValue(r.about),
+            openingHours: cleanupValue(r.openingHours),
+            ticketPrices: cleanupValue(r.ticketPrices),
+            website: cleanupValue(r.website),
+            id: r.id,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          };
+        });
+        const itemsWithCoords = items.filter((it: any) => !!it.coords);
+        if (itemsWithCoords.length > 0) {
+          // itemsWithCoords.forEach((it: any) => { if (it && it.id !== undefined && it.coords) overrideMapItemCoords(activeId!, it.id, it.coords); });
+          console.log({itemsWithCoords});
+          botMsg = {
+            id: String(Date.now() + 1),
+            role: 'bot',
+            type: 'map',
+            mapItems: itemsWithCoords,
+            suggestions: ['Open in Map', 'More details'],
+            ts: Date.now() + 1,
+          };
+          console.log({botMsg});
+          appendMessage(activeId, botMsg);
+          trySyncSession(activeId);
+        } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
+          const first = reply[0] as any;
+          const remoteId = first.sessionId ? String(first.sessionId) : undefined;
+          const botText = String(first.responseText ?? '');
+          botMsg = {
+            id: String(Date.now() + 1),
+            role: 'bot',
+            type: 'text',
+            text: botText,
+            suggestions: [],
+            ts: Date.now() + 1,
+          };
+          appendMessage(activeId, botMsg);
+          if (remoteId) {
+            adoptSessionId(activeId, remoteId);
+            setCurrentSessionId(remoteId);
+            trySyncSession(remoteId);
+          } else {
+            trySyncSession(activeId);
+          }
+        } else {
+          botMsg = {
+            id: String(Date.now() + 1),
+            role: 'bot',
+            type: 'text',
+            text: items[0]?.landmarkName ?? 'Location',
+            suggestions: ['More details'],
+            ts: Date.now() + 1,
+          };
+          appendMessage(activeId, botMsg);
+          trySyncSession(activeId);
+        }
+      } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'responseText' in reply[0]) {
         const first = reply[0] as any;
         const remoteId = first.sessionId ? String(first.sessionId) : undefined;
         const botText = String(first.responseText ?? '');
@@ -297,40 +365,8 @@ export default function GuideScreen() {
         } else {
           trySyncSession(activeId);
         }
-      } else if (Array.isArray(reply) && reply.length && typeof reply[0] === 'object' && 'landmarkName' in reply[0]) {
-        const items = reply.map((r: any) => {
-          let coordsObj: { latitude: number; longitude: number } | undefined;
-          try {
-            const parsed = typeof r.coords === 'string' ? JSON.parse(r.coords) : r.coords;
-            if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
-              coordsObj = { latitude: parsed.latitude, longitude: parsed.longitude };
-            }
-          } catch {}
-          return {
-            landmarkName: cleanupValue(r.landmarkName) ?? 'Location',
-            publicAccess: cleanupValue(r.publicAccess),
-            coords: coordsObj,
-            about: cleanupValue(r.about),
-            openingHours: cleanupValue(r.openingHours),
-            ticketPrices: cleanupValue(r.ticketPrices),
-            website: cleanupValue(r.website),
-            id: r.id,
-            createdAt: r.createdAt,
-            updatedAt: r.updatedAt,
-          };
-        });
-        botMsg = {
-          id: String(Date.now() + 1),
-          role: 'bot',
-          type: 'map',
-          mapItems: items,
-          suggestions: ['Open in Map', 'More details'],
-          ts: Date.now() + 1,
-        };
-        appendMessage(activeId, botMsg);
-        trySyncSession(activeId);
       } else {
-         throw new Error('Invalid JSON response from server');
+        throw new Error('Invalid JSON response from server');
       }
       setMessages((prev) => [botMsg, ...prev]);
     } catch {

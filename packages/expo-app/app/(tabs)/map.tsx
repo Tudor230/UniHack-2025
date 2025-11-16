@@ -104,12 +104,13 @@ export default function MapScreen() {
 
   useEffect(() => {
     const { lat, lon } = params;
+    try { console.log('MapScreen params', params); } catch {}
     if (lat && lon && mapRef.current) {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lon);
 
       if (!isNaN(latitude) && !isNaN(longitude)) {
-        // Animate the map to the new coordinates
+        try { console.log('MapScreen animateToRegion', { latitude, longitude }); } catch {}
         mapRef.current.animateToRegion(
           {
             latitude,
