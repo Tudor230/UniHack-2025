@@ -52,13 +52,19 @@ export default function MapMessage({ item }: { item: MapItem }) {
       <View style={[styles.card, { backgroundColor: surfaceCard }] }>
         <Text style={[styles.title, { color: textColor }]}>{item.landmarkName}</Text>
         {item.coords ? (
-          <MapView
-            style={styles.map}
-            initialRegion={{ latitude: lat, longitude: lon, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-            pointerEvents="none"
-          >
-            <Marker coordinate={{ latitude: lat, longitude: lon }} title={item.landmarkName} />
-          </MapView>
+        <MapView
+          style={styles.map}
+          initialRegion={{ latitude: lat, longitude: lon, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+          pointerEvents="none"
+          scrollEnabled={false}
+          zoomEnabled={false}
+          rotateEnabled={false}
+          pitchEnabled={false}
+          toolbarEnabled={false}
+          showsCompass={false}
+        >
+          <Marker coordinate={{ latitude: lat, longitude: lon }} title={item.landmarkName} />
+        </MapView>
         ) : (
           <View style={[styles.mapPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#E5E7EB' }] }>
             <Text style={{ color: colorScheme === 'dark' ? '#9BA1A6' : '#6B7280' }}>No location data</Text>

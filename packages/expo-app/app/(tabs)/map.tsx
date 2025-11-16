@@ -218,8 +218,9 @@ export default function MapScreen() {
         onPress={handleCloseModal}
         onPanDrag={handlePanDrag}
         initialRegion={initialRegion} // Use the location from state
-        showsUserLocation={true} // Shows the blue "you are here" dot
+        showsUserLocation={true}
         showsMyLocationButton={false}
+        showsCompass={false}
         onMapReady={() => setMapReady(true)}
 
       >
