@@ -16,9 +16,9 @@ export default function StartingChat({ onTemplateSelect }: { onTemplateSelect: (
   return (
     <View style={styles.container}>
       <View style={styles.headerIconWrap}>
-        <View style={[styles.headerIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#38383A' : '#E5E5EA' }]}>
+        {/* <View style={[styles.headerIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7', borderColor: isDark ? '#38383A' : '#E5E5EA' }]}>
           <Ionicons name="chatbubble-ellipses-outline" size={24} color={isDark ? '#FFFFFF' : '#333333'} />
-        </View>
+        </View> */}
       </View>
       <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Welcome</Text>
       <Text style={[styles.subtitle, { color: isDark ? '#8E8E93' : '#666666' }]}>How can I help you today?</Text>
