@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions, Text } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, Alert, View, Pressable, Dimensions, Text, Modal, TouchableOpacity } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 import ChatWindow from '@/components/chat/ChatWindow';
 import StartingChat from '@/components/chat/StartingChat';
@@ -20,6 +20,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '@/state/auth';
 
 // Conditionally import speech recognition
 let useSpeechRecognitionEvent: any;
@@ -53,6 +54,8 @@ export default function GuideScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ autoPrompt?: string }>();
   const router = useRouter();
+  const { token, logout } = useAuth();
+  const [isUserMenuVisible, setUserMenuVisible] = useState(false);
   const MIN_SCALE = 0.9;
   const MAX_SCALE = 4;
   const baseScale = useSharedValue(1);
@@ -61,6 +64,16 @@ export default function GuideScreen() {
   const translateY = useSharedValue(0);
   const offsetX = useSharedValue(0);
   const offsetY = useSharedValue(0);
+  const handleLogout = () => {
+    logout(); // Clears token and removes from storage
+    setUserMenuVisible(false); // Close the modal
+    setMessages([]); // Clear chat UI
+    setCurrentSessionId(undefined); // Clear session
+    // The router.replace('/login') is handled inside the logout() hook
+  };
+  const handleGoToLogin = () => {
+    router.replace('/login'); 
+  };
   const clamp = (v: number, min: number, max: number) => {
     'worklet';
     return Math.max(min, Math.min(max, v));
@@ -394,6 +407,25 @@ export default function GuideScreen() {
           </View>
         </View>
       ) : null}
+      <View style={{ position: 'absolute', top: insets.top + 16, right: insets.right + 20, zIndex: 1000 }}>
+        {token ? (
+          // USER BUTTON (Logged In)
+          <Pressable
+            onPress={() => setUserMenuVisible(true)} // Open the pop-up
+            style={[styles.headerButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+          >
+            <Ionicons name="person-circle-outline" size={22} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
+          </Pressable>
+        ) : (
+          // LOGIN BUTTON (Logged Out)
+          <Pressable
+            onPress={handleGoToLogin}
+            style={[styles.headerButton, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+          >
+            <Ionicons name="log-in" size={20} color={colorScheme === 'dark' ? '#FFFFFF' : '#333333'} />
+          </Pressable>
+        )}
+      </View>
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -467,10 +499,86 @@ export default function GuideScreen() {
           </View>
         </GestureHandlerRootView>
       ) : null}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isUserMenuVisible}
+        onRequestClose={() => setUserMenuVisible(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setUserMenuVisible(false)}
+        >
+          <View 
+            style={[styles.modalContainer, { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#FFF', borderColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]}
+            // This prevents the backdrop press from firing
+            onStartShouldSetResponder={() => true} 
+          >
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleLogout}
+            >
+              <Text style={styles.modalButtonTextLogout}>Log Out</Text>
+            </TouchableOpacity>
+            
+            <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]} />
+
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setUserMenuVisible(false)}
+            >
+              <Text style={styles.modalButtonTextCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    maxWidth: 300,
+    backgroundColor: 'white',
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  modalButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalButtonTextLogout: {
+    color: '#FF3B30', // Red color for logout
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalButtonTextCancel: {
+    color: '#007AFF', // Blue color for cancel
+    fontSize: 17,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+  },
 });
