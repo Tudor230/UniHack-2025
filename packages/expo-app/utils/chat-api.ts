@@ -1,7 +1,7 @@
 import { ChatMessage } from '@/components/chat/types';
 
 export async function sendChat(query: string, attachmentUri?: string, sessionId?: string) {
-  const endpoint = 'https://tudor230.app.n8n.cloud/webhook-test/74ee0fbe-6bde-42c4-aa42-cef9de496ce6';
+  const endpoint = 'https://tudor230.app.n8n.cloud/webhook/74ee0fbe-6bde-42c4-aa42-cef9de496ce6';
   const userId = '875812bb4985dff0ea018c65afc14ddf';
   const location = { latitude: 46.766667, longitude: 23.583333 };
 
