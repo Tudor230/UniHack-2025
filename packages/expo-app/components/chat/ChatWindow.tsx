@@ -36,7 +36,6 @@ export default function ChatWindow({ messages, isLoading, onChipPress, onImageOp
         contentContainerStyle={{ paddingBottom: insets.top + 64 }}
       />
       {isLoading ? <LoadingIndicator /> : null}
-      <SuggestionChips suggestions={suggestions} onChipPress={onChipPress} />
     </View>
   );
 }

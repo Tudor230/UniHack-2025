@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '@/components/chat/types';
 
 export type ChatSession = {
@@ -36,8 +37,25 @@ const Ctx = createContext<ChatHistoryStore | null>(null);
 export function ChatHistoryProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ChatHistoryState>(initialState);
 
-  useEffect(() => {}, []);
-  useEffect(() => {}, [state]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const loaded: ChatHistoryState = JSON.parse(raw);
+          setState(loaded);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch {}
+    })();
+  }, [state]);
 
   const value: ChatHistoryStore = useMemo(() => ({
     state,
