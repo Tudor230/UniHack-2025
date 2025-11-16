@@ -9,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { PinStoreProvider } from '@/state/pins';
 import { UiBusProvider } from '@/state/ui-bus';
 import { ChatHistoryProvider } from '@/state/chat-history';
+import { AuthProvider } from '@/state/auth';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -18,6 +19,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
+    <AuthProvider>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <UiBusProvider>
@@ -33,5 +35,6 @@ export default function RootLayout() {
         </UiBusProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
+    </AuthProvider>
   );
 }
