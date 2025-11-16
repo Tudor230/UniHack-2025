@@ -5,11 +5,12 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ChatMessage } from './types';
 import { Image } from 'expo-image';
 import { TouchableOpacity } from 'react-native';
+import MarkdownText from './MarkdownText';
 
 export default function MessageBubble({ message, onImagePress }: { message: ChatMessage, onImagePress?: (uri: string) => void }) {
   const colorScheme = useColorScheme();
   const isUser = message.role === 'user';
-  const bg = isUser ? '#007AFF' : 'transparent';
+  const bg = isUser ? Colors[colorScheme ?? 'light'].tint : 'transparent';
   const textColor = isUser ? '#FFFFFF' : Colors[colorScheme ?? 'light'].text;
 
   return (
@@ -24,17 +25,7 @@ export default function MessageBubble({ message, onImagePress }: { message: Chat
           isUser ? (
             <View style={styles.containerUser}>
               <View style={[styles.bubbleUser, { backgroundColor: bg }]}> 
-                <ThemedText
-                  style={[
-                    { color: textColor },
-                    { flexShrink: 0 },
-                    Platform.OS === 'android'
-                      ? ({ textBreakStrategy: 'simple', android_hyphenationFrequency: 'none', includeFontPadding: false } as any)
-                      : ({ lineBreakStrategy: 'pushOut' } as any),
-                  ]}
-                >
-                  {message.text}
-                </ThemedText>
+                <MarkdownText content={message.text!} color={textColor} />
               </View>
             </View>
           ) : (
@@ -42,17 +33,7 @@ export default function MessageBubble({ message, onImagePress }: { message: Chat
               <View style={styles.contentRow}>
                 <View style={[styles.accentLine, { backgroundColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]} />
                 <View style={styles.transparentBubble}>
-                  <ThemedText
-                    style={[
-                      { color: textColor },
-                      { flexShrink: 0 },
-                      Platform.OS === 'android'
-                        ? ({ textBreakStrategy: 'simple', android_hyphenationFrequency: 'none', includeFontPadding: false } as any)
-                        : ({ lineBreakStrategy: 'pushOut' } as any),
-                    ]}
-                  >
-                    {message.text}
-                  </ThemedText>
+                  <MarkdownText content={message.text!} color={textColor} />
                 </View>
               </View>
             </View>

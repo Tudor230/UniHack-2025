@@ -1,8 +1,9 @@
 import { FlatList, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { ChatMessage } from './types';
 import MessageBubble from './MessageBubble';
-import RichContentCard from './RichContentCard';
+import MapPreviewCard from './MapPreviewCard';
 import LoadingIndicator from './LoadingIndicator';
 import SuggestionChips from './SuggestionChips';
  
@@ -13,6 +14,7 @@ export default function ChatWindow({ messages, isLoading, onChipPress, onImageOp
   onChipPress: (s: string) => void;
   onImageOpen: (uri: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const lastBot = [...messages].reverse().find((m) => m.role === 'bot');
   const suggestions = lastBot?.suggestions ?? [];
 
@@ -22,13 +24,14 @@ export default function ChatWindow({ messages, isLoading, onChipPress, onImageOp
         data={messages}
         keyExtractor={(m) => m.id}
         renderItem={({ item }) =>
-          item.type === 'card' && item.card ? (
-            <RichContentCard card={item.card} />
+          item.type === 'map' && item.mapItems ? (
+            <MapPreviewCard items={item.mapItems} />
           ) : (
             <MessageBubble message={item} onImagePress={(uri) => { onImageOpen(uri); }} />
           )
         }
         inverted
+        contentContainerStyle={{ paddingBottom: insets.top }}
       />
       {isLoading ? <LoadingIndicator /> : null}
       <SuggestionChips suggestions={suggestions} onChipPress={onChipPress} />

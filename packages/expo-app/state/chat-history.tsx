@@ -26,6 +26,7 @@ type ChatHistoryStore = {
   deleteSession: (id: string) => void;
   renameSession: (id: string, title: string) => void;
   trySyncSession: (id: string) => Promise<void>;
+  adoptSessionId: (oldId: string, newId: string) => void;
 };
 
 const STORAGE_KEY = 'chatHistory:v1';
@@ -109,6 +110,17 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
       } catch {
         setState(prev => ({ sessions: prev.sessions.map(s => s.id === id ? { ...s, unsynced: true } : s) }));
       }
+    },
+    adoptSessionId: (oldId: string, newId: string) => {
+      if (!oldId || !newId || oldId === newId) return;
+      setState(prev => {
+        const exists = prev.sessions.some(s => s.id === newId);
+        if (exists) {
+          return { sessions: prev.sessions.filter(s => s.id !== oldId) };
+        }
+        const next = prev.sessions.map(s => s.id === oldId ? { ...s, id: newId, unsynced: true } : s);
+        return { sessions: next };
+      });
     },
   }), [state]);
 
