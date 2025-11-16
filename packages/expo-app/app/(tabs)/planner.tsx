@@ -34,6 +34,7 @@ function pinToPlace(pin: Pin): Place {
       lng: pin.coords.longitude,
     },
     status: 'want-to-go',
+    visited: false,
     scheduledTime: pin.eventDate ? new Date(pin.eventDate).toISOString() : null,
     type: 'activity', // Assuming all 'want-to-go' pins are 'activity'
   };
@@ -185,14 +186,33 @@ export default function PlannerPage() {
   };
   // --- END MODIFIED FUNCTION ---
 
-  const handleMarkAsVisited = (tripId: string, placeId: string) => {
+  const handleMarkAsVisited = async(tripId: string, placeId: string) => {
+    try {
+      const putUrl = `${BASE_API_URL}/places/${placeId}/visited`;
+      console.log(`Sending PUT request to: ${putUrl}`);
+      
+      const putResponse = await fetch(putUrl, { 
+          method: 'PUT',
+          body: 'true'
+          // headers: { 'Authorization': `Bearer ${userToken}` } // Add auth header if needed
+      });
+
+      if (!putResponse.ok) {
+          console.warn(`Server failed to put place ${placeId}: ${putResponse.status}`);
+          // Continue with local update if server responds but fails to delete
+      }
+  } catch (e) {
+      console.error('Network error during PUT:', e);
+      Alert.alert("Connection Error", "Failed to sync removal with server. The pin has been moved locally.");
+      // Continue to update local state for better UX
+  }
     setTrips((currentTrips) =>
       currentTrips.map((trip) => {
         if (trip.id === tripId) {
           return {
             ...trip,
             places: trip.places.map((place) =>
-              place.id === placeId ? { ...place, status: 'visited' } : place
+              place.id === placeId ? { ...place, visited: true } : place
             ),
           };
         }
@@ -201,14 +221,33 @@ export default function PlannerPage() {
     );
   };
 
-  const handleUndoVisit = (tripId: string, placeId: string) => {
+  const handleUndoVisit = async(tripId: string, placeId: string) => {
+    try {
+      const putUrl = `${BASE_API_URL}/places/${placeId}/visited`;
+      console.log(`Sending PUT request to: ${putUrl}`);
+      
+      const putResponse = await fetch(putUrl, { 
+          method: 'PUT',
+          body: 'false'
+          // headers: { 'Authorization': `Bearer ${userToken}` } // Add auth header if needed
+      });
+
+      if (!putResponse.ok) {
+          console.warn(`Server failed to put place ${placeId}: ${putResponse.status}`);
+          // Continue with local update if server responds but fails to delete
+      }
+  } catch (e) {
+      console.error('Network error during PUT:', e);
+      Alert.alert("Connection Error", "Failed to sync removal with server. The pin has been moved locally.");
+      // Continue to update local state for better UX
+  }
     setTrips((currentTrips) =>
       currentTrips.map((trip) => {
         if (trip.id === tripId) {
           return {
             ...trip,
             places: trip.places.map((place) =>
-              place.id === placeId ? { ...place, status: 'scheduled' } : place
+              place.id === placeId ? { ...place, visited: false } : place
             ),
           };
         }
