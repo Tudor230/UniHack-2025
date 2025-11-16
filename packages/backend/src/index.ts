@@ -178,17 +178,20 @@ function buildApp() {
 
     await app.db.query(
       "update PROD.PUBLIC.TRIPS set DESTINATION = ?, START_DATE = ?, END_DATE = ? where ID = ?",
-      [
-        trip.details.destination,
-        trip.details.startDate,
-        trip.details.endDate,
-        tripId,
-      ]
+      [trip.details.destination, trip.details.startDate, trip.details.endDate, tripId]
+    );
+    await app.db.query(
+      "delete from PROD.PUBLIC.PLACES where TRIP_ID = ?",
+      [tripId]
+    );
+    await app.db.query(
+      "delete from PROD.PUBLIC.DAILY_TRAVEL_TIMES where TRIP_ID = ?",
+      [tripId]
     );
 
     for (const place of trip.places) {
       await app.db.query(
-        "update PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
+        "insert into PROD.PUBLIC.PLACES (ID, NAME, LOCATION, STATUS, SCHEDULED_TIME, TYPE, TRIP_ID) select ?, ?, parse_json(?), ?, ?, ?, ?",
         [
           crypto.randomUUID(),
           place.name,
