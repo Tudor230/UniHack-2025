@@ -42,6 +42,8 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedCoord, setSelectedCoord] = useState<LatLng | null>(null);
   const params = useLocalSearchParams<{ lat?: string; lon?: string }>();
+  const [pendingTarget, setPendingTarget] = useState<LatLng | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const [followsUser, setFollowsUser] = useState(true); // Follows by default
   const [currentUserLocation, setCurrentUserLocation] = useState<LatLng | null>(null);
@@ -79,8 +81,9 @@ export default function MapScreen() {
       const lon = params.lon ? parseFloat(String(params.lon)) : undefined;
       if (typeof lat === 'number' && typeof lon === 'number' && !Number.isNaN(lat) && !Number.isNaN(lon)) {
         setFollowsUser(false);
-        setSelectedCoord({ latitude: lat, longitude: lon });
-        mapRef.current?.animateToRegion({ latitude: lat, longitude: lon, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 300);
+        const target = { latitude: lat, longitude: lon };
+        setSelectedCoord(target);
+        setPendingTarget(target);
       }
 
       // 4b. Start *watching* the user's position
@@ -104,28 +107,26 @@ export default function MapScreen() {
 
   useEffect(() => {
     const { lat, lon } = params;
-    if (lat && lon && mapRef.current) {
+    if (lat && lon) {
       const latitude = parseFloat(lat);
       const longitude = parseFloat(lon);
-
       if (!isNaN(latitude) && !isNaN(longitude)) {
-        // Animate the map to the new coordinates
-        mapRef.current.animateToRegion(
-          {
-            latitude,
-            longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          },
-          1000 // Animate over 1 second
-        );
-        // Stop following the user, since they want to look elsewhere
+        setPendingTarget({ latitude, longitude });
         setFollowsUser(false);
-        // Clear the params so it doesn't run again
         router.setParams({ lat: undefined, lon: undefined });
       }
     }
-  }, [params.lat, params.lon, mapRef.current]);
+  }, [params.lat, params.lon]);
+
+  useEffect(() => {
+    if (mapReady && pendingTarget && mapRef.current) {
+      mapRef.current.animateToRegion(
+        { latitude: pendingTarget.latitude, longitude: pendingTarget.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+        800
+      );
+      setPendingTarget(null);
+    }
+  }, [mapReady, pendingTarget]);
 
   // This effect runs whenever the user's location updates
   useEffect(() => {
@@ -217,8 +218,10 @@ export default function MapScreen() {
         onPress={handleCloseModal}
         onPanDrag={handlePanDrag}
         initialRegion={initialRegion} // Use the location from state
-        showsUserLocation={true} // Shows the blue "you are here" dot
+        showsUserLocation={true}
         showsMyLocationButton={false}
+        showsCompass={false}
+        onMapReady={() => setMapReady(true)}
 
       >
         <PinMarkers

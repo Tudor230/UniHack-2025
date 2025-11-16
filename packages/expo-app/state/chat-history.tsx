@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '@/components/chat/types';
-import { createChatSession, syncChatSession, fetchChatSession } from '@/utils/chat-api';
 
 export type ChatSession = {
   id: string;
@@ -27,6 +26,7 @@ type ChatHistoryStore = {
   renameSession: (id: string, title: string) => void;
   trySyncSession: (id: string) => Promise<void>;
   adoptSessionId: (oldId: string, newId: string) => void;
+  overrideMapItemCoords: (sessionId: string, itemId: string | number, coords: { latitude: number; longitude: number }) => void;
 };
 
 const STORAGE_KEY = 'chatHistory:v1';
@@ -41,7 +41,10 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setState(JSON.parse(raw));
+        if (raw) {
+          const loaded: ChatHistoryState = JSON.parse(raw);
+          setState(loaded);
+        }
       } catch {}
     })();
   }, []);
@@ -61,14 +64,7 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
     loadSession: async (id: string) => {
       const local = state.sessions.find(s => s.id === id);
       if (local) return local;
-      try {
-        const remote = await fetchChatSession(id);
-        if (!remote) return null;
-        setState(prev => ({ sessions: [remote, ...prev.sessions] }));
-        return remote;
-      } catch {
-        return null;
-      }
+      return null;
     },
     createSession: (firstUserMessage: ChatMessage) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -86,8 +82,33 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
       return id;
     },
     appendMessage: (id: string, message: ChatMessage) => {
+      try { console.log('appendMessage', { id, message }); } catch {}
       setState(prev => {
         const next = prev.sessions.map(s => s.id === id ? { ...s, messages: [message, ...s.messages], updatedAt: Date.now(), unsynced: true } : s);
+        return { sessions: next };
+      });
+    },
+    overrideMapItemCoords: (sessionId: string, itemId: string | number, coords: { latitude: number; longitude: number }) => {
+      try { console.log('overrideMapItemCoords', { sessionId, itemId, coords }); } catch {}
+      setState(prev => {
+        const next = prev.sessions.map(s => {
+          if (s.id !== sessionId) return s;
+          const updatedMessages = s.messages.map(m => {
+            if (m.type === 'map' && Array.isArray(m.mapItems)) {
+              const updatedItems = m.mapItems.map(mi => {
+                const match = mi.id !== undefined ? mi.id === itemId : false;
+                if (match) {
+                  try { console.log('overrideMapItemCoords matched', { item: mi }); } catch {}
+                  return { ...mi, coords };
+                }
+                return mi;
+              });
+              return { ...m, mapItems: updatedItems } as ChatMessage;
+            }
+            return m;
+          });
+          return { ...s, messages: updatedMessages, updatedAt: Date.now(), unsynced: true };
+        });
         return { sessions: next };
       });
     },
@@ -97,20 +118,7 @@ export function ChatHistoryProvider({ children }: { children: React.ReactNode })
     renameSession: (id: string, title: string) => {
       setState(prev => ({ sessions: prev.sessions.map(s => s.id === id ? { ...s, title, updatedAt: Date.now(), unsynced: true } : s) }));
     },
-    trySyncSession: async (id: string) => {
-      const session = state.sessions.find(s => s.id === id);
-      if (!session) return;
-      try {
-        if (session.createdAt === session.updatedAt) {
-          await createChatSession({ id: session.id, title: session.title, createdAt: session.createdAt, updatedAt: session.updatedAt, messages: session.messages });
-        } else {
-          await syncChatSession({ id: session.id, title: session.title, createdAt: session.createdAt, updatedAt: session.updatedAt, messages: session.messages });
-        }
-        setState(prev => ({ sessions: prev.sessions.map(s => s.id === id ? { ...s, unsynced: false } : s) }));
-      } catch {
-        setState(prev => ({ sessions: prev.sessions.map(s => s.id === id ? { ...s, unsynced: true } : s) }));
-      }
-    },
+    trySyncSession: async (_id: string) => {},
     adoptSessionId: (oldId: string, newId: string) => {
       if (!oldId || !newId || oldId === newId) return;
       setState(prev => {
