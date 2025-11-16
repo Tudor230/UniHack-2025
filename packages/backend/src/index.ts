@@ -58,7 +58,9 @@ function buildApp() {
             })),
             dailyTravelTimes: Object.fromEntries(
               dailyTimesResult.data.map((dr) => [
-                new Date(parseFloat(dr[0]) * 1000 * 60 * 60 * 24).toISOString().split('T')[0],
+                new Date(parseFloat(dr[0]) * 1000 * 60 * 60 * 24)
+                  .toISOString()
+                  .split("T")[0],
                 JSON.parse(dr[1]),
               ])
             ),
@@ -66,6 +68,16 @@ function buildApp() {
         })
       )
     );
+  });
+
+  app.delete("/places/:placeId", async (request, reply) => {
+    const placeId = (request.params as any).placeId;
+
+    await app.db.query("delete from PROD.PUBLIC.PLACES where ID = ?", [
+      placeId,
+    ]);
+
+    reply.send({ status: "success" });
   });
 
   app.post("/trips", async (request, reply) => {
