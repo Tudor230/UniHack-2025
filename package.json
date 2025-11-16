@@ -10,6 +10,7 @@
   "dependencies": {
     "@react-native-community/datetimepicker": "8.4.4",
     "expo-location": "~19.0.7",
+    "jwt-decode": "^4.0.0",
     "lucide-react-native": "^0.553.0",
     "react-native-auth0": "^5.1.0",
     "react-native-maps": "1.20.1",

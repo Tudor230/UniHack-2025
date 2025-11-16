@@ -11223,6 +11223,7 @@ __metadata:
   dependencies:
     "@react-native-community/datetimepicker": "npm:8.4.4"
     expo-location: "npm:~19.0.7"
+    jwt-decode: "npm:^4.0.0"
     lucide-react-native: "npm:^0.553.0"
     react-native-auth0: "npm:^5.1.0"
     react-native-maps: "npm:1.20.1"

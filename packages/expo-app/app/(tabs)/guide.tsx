@@ -54,7 +54,7 @@ export default function GuideScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ autoPrompt?: string }>();
   const router = useRouter();
-  const { token, logout } = useAuth();
+  const { token, logout, username } = useAuth();
   const [isUserMenuVisible, setUserMenuVisible] = useState(false);
   const MIN_SCALE = 0.9;
   const MAX_SCALE = 4;
@@ -512,6 +512,12 @@ export default function GuideScreen() {
             // This prevents the backdrop press from firing
             onStartShouldSetResponder={() => true} 
           >
+            <View style={styles.usernameContainer}>
+              <Text style={styles.usernameText} numberOfLines={1}>
+                {username || '...'}
+              </Text>
+            </View>
+            <View style={[styles.separator, { backgroundColor: colorScheme === 'dark' ? '#38383A' : '#E5E5EA' }]} />
             <TouchableOpacity
               style={styles.modalButton}
               onPress={handleLogout}
@@ -578,5 +584,15 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: StyleSheet.hairlineWidth,
+  },
+  usernameContainer: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  usernameText: {
+    fontSize: 13,
+    color: '#8E8E93', // A muted gray color
+    fontWeight: '500',
   },
 });

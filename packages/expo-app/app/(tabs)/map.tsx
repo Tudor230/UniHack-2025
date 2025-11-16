@@ -20,7 +20,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import * as Location from 'expo-location';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
  
 export default function MapScreen() {
@@ -101,6 +101,31 @@ export default function MapScreen() {
       locationSubscription.current?.remove();
     };
   }, []); // Runs once on mount
+
+  useEffect(() => {
+    const { lat, lon } = params;
+    if (lat && lon && mapRef.current) {
+      const latitude = parseFloat(lat);
+      const longitude = parseFloat(lon);
+
+      if (!isNaN(latitude) && !isNaN(longitude)) {
+        // Animate the map to the new coordinates
+        mapRef.current.animateToRegion(
+          {
+            latitude,
+            longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          },
+          1000 // Animate over 1 second
+        );
+        // Stop following the user, since they want to look elsewhere
+        setFollowsUser(false);
+        // Clear the params so it doesn't run again
+        router.setParams({ lat: undefined, lon: undefined });
+      }
+    }
+  }, [params.lat, params.lon, mapRef.current]);
 
   // This effect runs whenever the user's location updates
   useEffect(() => {

@@ -14,9 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/state/auth';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { jwtDecode } from 'jwt-decode';
 
 // 2. DEFINE YOUR API ENDPOINT
-const LOGIN_API_ENDPOINT = 'https://your-api.com/login'; // <-- REPLACE THIS
+const LOGIN_API_ENDPOINT = 'https://backend-507j.onrender.com/login'; // <-- REPLACE THIS
 
 export default function App() {
   const [email, setEmail] = useState<string>('');
@@ -39,16 +40,14 @@ export default function App() {
   /**
    * Handles the login button press.
    */
-  const handleLogin = async () => { // 4. Make the function async
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
       return;
     }
-
-    setIsLoading(true); // 5. Set loading to true
+    setIsLoading(true);
 
     try {
-      // 6. Send the network request
       const response = await fetch(LOGIN_API_ENDPOINT, {
         method: 'POST',
         headers: {
@@ -60,30 +59,33 @@ export default function App() {
         }),
       });
 
-      const data = await response.json(); // 7. Parse the JSON response from server
+      const data = await response.json();
 
-      // 8. Handle the response
       if (response.ok) {
-        // Success!
-        Alert.alert('Success', 'Logged in successfully!');
-        await login(data.token);
+        // --- THIS IS THE FIX ---
         
-        // In a real app, you would save the 'data.token' here
-        // e.g., await AsyncStorage.setItem('userToken', data.token);
+        // 2. Decode the token
+        const decodedToken: any = jwtDecode(data.token);
+        
+        // 3. Add this log to see what's inside the token
+        console.log('Decoded Token Payload:', decodedToken);
+        
+        // 4. Find the username. Common keys are 'username', 'email', 'name', or 'sub'.
+        //    Check your console log to see which one your API uses.
+        const usernameToSave = decodedToken.username || decodedToken.email || decodedToken.name || decodedToken.sub || 'User';
 
-        // 9. Navigate to the main app (e.g., your map screen)
-        // 'replace' clears the back-stack so user can't go "back" to login
-        router.replace('/guide'); // <-- Adjust this to your main app route
+        // 5. Call login with the token AND the extracted username
+        await login(data.token, usernameToSave);
+        // --- END FIX ---
+
+        router.replace('/guide');
       } else {
-        // Server responded with an error
         Alert.alert('Login Failed', data.message || 'Something went wrong');
       }
     } catch (error) {
-      // 10. Handle network errors (e.g., no internet)
       console.error(error);
       Alert.alert('Error', 'Could not connect to the server.');
     } finally {
-      // 11. Set loading to false whether it succeeded or failed
       setIsLoading(false);
     }
   };

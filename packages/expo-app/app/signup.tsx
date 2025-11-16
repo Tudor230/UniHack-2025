@@ -13,9 +13,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/state/auth';
+import { jwtDecode } from 'jwt-decode';
 
 // 4. DEFINE YOUR API ENDPOINT
-const SIGNUP_API_ENDPOINT = 'https://your-api.com/signup'; // <-- REPLACE THIS
+const SIGNUP_API_ENDPOINT = 'https://backend-507j.onrender.com/register'; // <-- REPLACE THIS
 
 export default function App() {
   const [fullName, setFullName] = useState<string>('');
@@ -27,6 +29,7 @@ export default function App() {
   const router = useRouter(); // 6. Get the router instance
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
+  const { login } = useAuth();
 
   /**
    * Handles the sign-up button press.
@@ -65,11 +68,16 @@ export default function App() {
       if (response.ok) {
         Alert.alert(
           'Sign Up Successful',
-          'Your account has been created. Please log in.'
+          'Your account has been created.'
         );
-        // 12. Navigate to login page
-        // 'replace' stops user from going "back" to signup
-        router.replace('/login'); 
+        // 2. Decode the token
+        const decodedToken: any = jwtDecode(data.token);
+
+        // 3. Find the username (it's probably the one you just sent)
+        const usernameToSave = decodedToken.username || decodedToken.email || decodedToken.name || decodedToken.sub || username;
+
+        // 4. Call login with the token AND the extracted username
+        await login(data.token, usernameToSave);
       } else {
         Alert.alert('Sign Up Failed', data.message || 'Something went wrong');
       }
