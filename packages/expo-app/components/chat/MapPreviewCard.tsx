@@ -94,6 +94,7 @@ export default function MapPreviewCard({ items }: { items: MapItem[] }) {
               zoomEnabled={false}
               rotateEnabled={false}
               pitchEnabled={false}
+              showsMyLocationButton={false}
               pointerEvents="none"
             >
               {items.map((item, idx) => (

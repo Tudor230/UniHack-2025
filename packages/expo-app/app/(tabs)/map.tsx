@@ -193,6 +193,7 @@ export default function MapScreen() {
         onPanDrag={handlePanDrag}
         initialRegion={initialRegion} // Use the location from state
         showsUserLocation={true} // Shows the blue "you are here" dot
+        showsMyLocationButton={false}
 
       >
         <PinMarkers
