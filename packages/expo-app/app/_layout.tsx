@@ -4,8 +4,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 import { PinStoreProvider } from '@/state/pins';
 import { UiBusProvider } from '@/state/ui-bus';
 import { ChatHistoryProvider } from '@/state/chat-history';
@@ -20,23 +21,25 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <UiBusProvider>
-          <PinStoreProvider>
-            <ChatHistoryProvider>
-              <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="login" options={{ headerShown: false }} />
-                <Stack.Screen name="signup" options={{ headerShown: false }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-              </Stack>
-              <StatusBar style="auto" />
-            </ChatHistoryProvider>
-          </PinStoreProvider>
-        </UiBusProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+            <UiBusProvider>
+              <PinStoreProvider>
+                <ChatHistoryProvider>
+                  <Stack screenOptions={{ contentStyle: { backgroundColor: Colors[colorScheme ?? 'light'].background } }}>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="login" options={{ headerShown: false }} />
+                    <Stack.Screen name="signup" options={{ headerShown: false }} />
+                    <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+                  </Stack>
+                  <StatusBar style="auto" />
+                </ChatHistoryProvider>
+              </PinStoreProvider>
+            </UiBusProvider>
+          </ThemeProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     </AuthProvider>
   );
 }

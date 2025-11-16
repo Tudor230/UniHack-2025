@@ -1,16 +1,15 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
   Alert,
   TouchableOpacity,
-  ActivityIndicator, // 2. Import ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router'; // 3. Import useRouter
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
