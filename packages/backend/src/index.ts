@@ -58,7 +58,7 @@ function buildApp() {
             })),
             dailyTravelTimes: Object.fromEntries(
               dailyTimesResult.data.map((dr) => [
-                new Date(parseFloat(dr[0]) * 1000).toISOString(),
+                new Date(parseFloat(dr[0]) * 24 * 60 * 60 * 1000).toISOString(),
                 JSON.parse(dr[1]),
               ])
             ),
