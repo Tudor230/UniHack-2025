@@ -22,7 +22,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors[colorScheme ?? 'light'].background }}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <UiBusProvider>
               <PinStoreProvider>
@@ -33,7 +33,7 @@ export default function RootLayout() {
                     <Stack.Screen name="signup" options={{ headerShown: false }} />
                     <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
                   </Stack>
-                  <StatusBar style="auto" />
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
                 </ChatHistoryProvider>
               </PinStoreProvider>
             </UiBusProvider>
